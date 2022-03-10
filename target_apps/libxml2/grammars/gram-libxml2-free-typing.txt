@@ -1,0 +1,4 @@
+<entry> ::= <entry> <char> | /* empty */;
+<char> ::= '<' | '>' | <Alphanumeric> | <SpecialCharacters>;
+<Alphanumeric> ::= 'a' | 'b' | 'c' | '1' | '2' | '3';
+<SpecialCharacters> ::= '.' | '-' | '_' | ':' | '?' | '/';

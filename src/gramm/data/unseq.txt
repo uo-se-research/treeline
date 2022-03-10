@@ -1,0 +1,6 @@
+/* Grammar for debugging choice without sequence. */
+ S ::= A | B ;
+ A ::= "not_a_seq" | "a" "sequence" ;
+ B ::= "two" "items" | "one" | /* empty */;
+
+ 

@@ -1,0 +1,76 @@
+# A grammar for the main part of a flex specification,
+# excluding the C code.  This includes macros and regular expressions,
+# but actions are always ";"
+#
+
+flexspec ::= definitions "%%\n" rules "%%\n" ;
+
+# We'll omit C code but consider macros
+# Nope, with macros it is very hard to get legal inputs
+# definitions ::= macro* ;
+definitions ::= /* empty */ ;
+macro ::= mname sp regex "\n" ;
+mname ::= [A-Z]+ ;
+sp ::= " ";
+
+rules ::= (regex sp ";\n")* ;  # Omit actions
+
+regex ::= r_term optContext ;
+# The grammar for regular expressions follows
+# the definitions given at
+# http://dinosaur.compilertools.net/flex/flex_7.html#SEC7
+r_term ::=
+    normal_char     # matches itself
+    | "."           # Wild card match
+    | char_class
+    | kleene
+    | kleene_plus
+    | optional
+    | repeat_range
+    # | expansion  # Reference to macro, almost impossible to match
+    | quoted
+    | escape_seq
+    | group
+    | seq
+    | either
+    # | in_start_condition  # Nearly impossible to match to declaration
+    # | "<<EOF>>"
+    ;
+
+char ::= [a-zA-Z0-9 ,*+?-]
+    | escape_seq
+    ;
+
+normal_char ::= [a-zA-Z0-9] | escape_seq ;
+
+char_class ::= "[" "^"? range+ "]" ;
+range ::= char+
+    | char "-" char
+    ;
+
+escape_seq ::= "\\" escaped ;
+escaped ::= [a-zA-Z0-9]  # Some with special meanings
+    | [-+*?\\0. ]
+    | "[" | "]"
+    | [0-9][0-9][0-9]
+    | "x" [0-9a-f][0-9a-fA-F]
+    ;
+
+# Recursive cases
+kleene ::= r_term "*" ;
+kleene_plus ::= r_term "+" ;
+optional ::= r_term "?" ;
+repeat_range ::= r_term "{" how_many "}" ;
+how_many  ::= [0-9]+
+    | [0-9]+","[0-9]*
+    ;
+expansion ::= "{" mname "}" ;
+quoted ::= ["]  char+ ["] ;
+group ::= "(" r_term ")" ;
+seq ::= r_term r_term ;
+either ::= r_term "|" r_term ;
+in_start_condition ::= "<" [a-zA-Z0-9]+ ">" r_term ;
+
+optContext ::= "/" r_term
+    | /* empty */ ;
+
