@@ -1,5 +1,5 @@
 """Grammar structure
-anonymous, June-August 2020
+Michal Young, June-August 2020
 """
 import re
 import logging

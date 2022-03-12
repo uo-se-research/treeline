@@ -1,7 +1,7 @@
 """
 An LL parser for BNF
-anonymous, adapted Summer 2020 from CIS 211 projects,
-revised in discussion with anonymous.
+Michal Young, adapted Summer 2020 from CIS 211 projects,
+revised in discussion with Ziyad Alsaeed.
 """
 
 import logging
