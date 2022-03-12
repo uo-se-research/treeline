@@ -2,7 +2,7 @@
 
 Finding slow input faster using Monte-Carlo Tree Search and application provided context-free grammar. 
 
-This is a testing version of the code TreeLine (the exact code used for experimentation. We are aware that it is not
+This is a testing version of the code TreeLine (the exact code used for experimentation). We are aware that it is not
 user-friendly. However, we wanted to share the code to comply the open-source policy. The repository will change
 drastically after paper submission. We will refactor most of the code and add all the necessary documentation.
 
@@ -34,7 +34,8 @@ python3.9 mcts_exper.py
 - The [src](src) directory is where all source code is stored.
   - The [gramm](src/gramm) directory is a package to read grammar files and return them as objects we can work with.
   - The [mcts](src/mcts) directory is a package where all the main MCTS algorithm lives.
-  - The file [epsilonStrategy](src/epsilonStrategy.py), [targetAppConnect](src/targetAppConnect.py), and [utilities](src/utilities.py) are helper files for non-core functions.
+  - The file [epsilonStrategy](src/epsilonStrategy.py), [targetAppConnect](src/targetAppConnect.py), 
+  and [utilities](src/utilities.py) are helper files for non-core functions.
   - The file [mcts_exper](src/mcts_exper.py) is the file used to run an experiment.
 - The [resources](resources) directory is dir where we keep some resources needed during building the docker container.  
 - The [target_apps](target_apps) directory is where all the benchmarks we used, grammars, seed inputs are stored.
