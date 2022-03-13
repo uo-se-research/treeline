@@ -1,5 +1,6 @@
 # TreeLine
 
+<img align="left" src="treeline-logo.png" width=100>
 Finding slow input faster using Monte-Carlo Tree Search and application provided context-free grammar. 
 
 This is a testing version of the code TreeLine (the exact code used for experimentation). We are aware that it is not
