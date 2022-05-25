@@ -1,10 +1,13 @@
 # [Graphviz](https://graphviz.org/)
 
-We obtain version 2.47.0 to test it 
+We obtain the latest version at the time of our test (2.47.0).
+The source file is provided here for reference under the [src](./src) directory.
+However, if you wish to download the source file yourself, you can try this 
 [download link](https://gitlab.com/graphviz/graphviz/-/package_files/8183714/download).
 
 ## Application Stats
-```commandline
+
+```bash
 $ cloc --not-match-f=test .
     3888 text files.
     3458 unique files.                                          
@@ -53,33 +56,32 @@ SUM:                                  1413          60026          52935        
 ---------------------------------------------------------------------------------------
 ```
 
-We only count code of C, C++, and C/C++ Headers (given *test* files are excluded). Thus, 1021021 + 22512 + 7163 = 1,050,696.
+We only count code of C, C++, and C/C++ Headers (given *test* files are excluded).
+Thus, 1,021,021 + 22,512 + 7,163 = 1,050,696 SLoC.
 
-## Build
+## Manually Build the Source Code
 
-After uncompressing the file `tar -xf graphviz-2.47.0.tar.gz`, and withing the new directory, use AFL's compiler to 
-generate the appropriate Makefile.
+After decompressing the file `tar -xf graphviz-2.47.0.tar.gz`, and within the new directory,
+use AFL's compiler to generate the appropriate Makefile.
 
-```commandline
-CXX=/home/git/perffuzz/afl-clang-fast++ CC=/home/git/perffuzz/afl-clang-fast ./configure
-```
+1. ```bash
+   CXX=/home/git/perffuzz/afl-clang-fast++ CC=/home/git/perffuzz/afl-clang-fast ./configure
+   ```
 
-Then run 
-```commandline
-make
-```
+2. ```bash
+   make
+   ```
 
-followed by 
-```commandline
-make install
-```
+3. ```bash
+   make install
+   ```
 
 All the necessary libraries should be now copied to the used environment with instrumented executables.
 
-## Sample run with no fuzzing
+## Sample Run Without Fuzzing
 
 To test the that the installation was successfully completed. You can run `dot` based on 
-[sample graph](inputs/seed1.dot) (shown below). by simply passing the file to dot `dot sample.dot`.
+[sample graph](inputs/seed1.dot) (shown below) by simply passing the file to dot `dot sample.dot`.
 
 ```dot
 digraph G {
@@ -136,9 +138,9 @@ To render the graph you could try the following:
 dot -Tps sample.dot -o sample.ps
 ```
 
-## Run with AFL
+## Run With AFL
 
-To run the AFL listener on the target application you use a command similar to the one below.
+To manually run the AFL listener on the target application you use a command similar to the one below.
 
 ```commandline
 afl-fuzz -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot

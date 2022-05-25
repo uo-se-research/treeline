@@ -2,13 +2,16 @@
 
 ## Download Instructions
 
-Similar to PerfFuzz we use version libxml2-2.9.7. To download the source file you can use this 
-[link](http://xmlsoft.org/sources/libxml2-2.9.7-rc1.tar.gz) or you can search for the same version in libxml2's 
-[sources archive](http://xmlsoft.org/sources/).  
+Similar to PerfFuzz we use version 2.9.7 of libxml2.
+The source file is provided here for reference under the [src](./src) directory.
+However, if you wish to download the source file yourself, you can try this
+[link](http://xmlsoft.org/sources/libxml2-2.9.7-rc1.tar.gz),
+or you can search for the same version in libxml2's 
+[sources archive](http://xmlsoft.org/sources/).
 
 ## Application Stats
 
-```commandline
+```bash
 $ cloc --not-match-f=test .
     3748 text files.
     3135 unique files.                                          
@@ -41,17 +44,18 @@ SUM:                          1399          38650          72401         408325
 -------------------------------------------------------------------------------
 ```
 
-We only count code of C and C/C++ Headers (given *test* files are excluded). Thus, 162183 + 29188 = 191,371.
+We only count code of C, C++, and C/C++ Headers (given *test* files are excluded).
+Thus, 162,183 + 29,188 = 191,371 SLoC.
 
-## Build
+## Manually Build the Source Code
 
-After uncompressing the file `tar -xvf libxml2-2.9.7.tar.gz`, and withing the new directory, US AFL's compiler to 
-generate the appropriate Makefile.
+After decompressing the file `tar -xvf libxml2-2.9.7.tar.gz`, and within the new directory,
+use AFL's compiler to generate the appropriate Makefile.
 
-```commandline
+```bash
 CC=/home/git/perffuzz/afl-clang-fast ./configure --disable-shared
 ```
-We use the flag `--disable-shared` to complie in a static library mode.
+We use the flag `--disable-shared` to compile in a static library mode.
 
 Then run 
 ```commandline
@@ -61,7 +65,7 @@ make
 If things compiled successfully, then you should find a file call `xmllint` which is the source file we use to run
 tests.
 
-## Sample run with no fuzzing
+## Sample Run Without Fuzzing
 
 To test the that the installation was successfully completed. You can run `xmllint` based on 
 [seed1.xml](inputs/seed1.xml) (shown below) by simply passing the file to libxml2 `./xmllint sample.dot`. A correct
@@ -83,9 +87,9 @@ given in [libxml2 documentation](http://www.xmlsoft.org/tutorial/apb.html).
 </story>
 ```
 
-## Run with AFL
+## Run With AFL
 
-To run the AFL listener on the target application you use a command similar to the one below.
+To manually run the AFL listener on the target application you use a command similar to the one below.
 
 ```commandline
 afl-fuzz -i /home/treeline/target_apps/libxml2/inputs/ -o /home/results/libxml2-001 -p -N 500 -d /home/treeline/target_apps/libxml2/src/libxml2-2.9.7/xmllint @@
