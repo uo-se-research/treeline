@@ -11,7 +11,7 @@ import slack
 from gramm.llparse import *
 from gramm.grammar import FactorEmpty
 import mcts.mcts_globals as mg  # MCTS globals
-from mcts.monte_carlo_tree_search import MonteCarloTreeSearch
+from mcts.mcts import MonteCarloTreeSearch
 
 
 if __name__ == "__main__":

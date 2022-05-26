@@ -316,7 +316,7 @@ class MonteCarloTreeSearch:
                 # log the uct value for each node in the buffer.
                 for node in buffer:
                     cost = track_costs[id(node)]  # the cost for which this node was added to buffer (used in key)
-                    track_ucb[f"{node.get_name()}-{cost}"].append(node.get_ucb1())
+                    track_ucb[f"{node.get_signature()}-{cost}"].append(node.get_ucb1())
 
             # LOG: logging uniqueness and prep for check to drop the tree
             uniqueness_percentage = 1.0 if self.exec_since_last_reset < self.tail_len \
@@ -862,7 +862,7 @@ class MonteCarloTreeSearch:
                 if not self.raw_len_based_reward:  # and if we settle for raw, that's it, never going back
                     if len(self.len_buffer) == self.len_buffer.maxlen:
                         top_20_prc = int(0.8 * self.allowed_budget)
-                        if Utility.incident_prc_of_value_threshold(list(self.len_buffer), top_20_prc) < .5:
+                        if Utility.get_prc_of_value_above_threshold(list(self.len_buffer), top_20_prc) < .5:
                             if self.len_w < 0.9:  # hitting the max
                                 self.len_w += .0001
                             else:

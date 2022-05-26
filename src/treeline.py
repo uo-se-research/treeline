@@ -10,7 +10,7 @@ from datetime import datetime
 
 from gramm.llparse import *
 from gramm.grammar import FactorEmpty
-from mcts.monte_carlo_tree_search import MonteCarloTreeSearch
+from mcts.mcts import MonteCarloTreeSearch
 
 
 if __name__ == "__main__":

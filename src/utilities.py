@@ -3,35 +3,30 @@ __email__ = "zalsaeed@cs.uoregon.edu"
 __status__ = "Testing"
 
 import os
-import csv
-import datetime
 import subprocess
-from pathlib import Path
 from typing import List, Iterable, Callable
 
-# import torch
 import pandas as pd
 from sympy.solvers import solve
 from sympy import Symbol
 from sympy import Eq
 
-from targetAppConnect import InputHandler
-
 
 class Utility:
 
     @staticmethod
-    def scale_to_range(x, max_x, min_x, range_a, range_b) -> float:
+    def scale_to_range(x_value, x_max, x_min, range_a, range_b) -> float:
         """
+        Given a value x in a known range (min-max), squish it between a new defined range a and b.
 
-        :param x: tha value to scale.
-        :param max_x: the maximum value in the range from where x is given.
-        :param min_x: the minimum value in the range from where x is given.
-        :param range_a: the minimum value of the new scale.
-        :param range_b: the maximum value of the new scale.
-        :return: A value scaled within the new range a and b.
+        @param x_value: tha value to scale.
+        @param x_max: the maximum value in the range from where x is given.
+        @param x_min: the minimum value in the range from where x is given.
+        @param range_a: the minimum value of the new scale.
+        @param range_b: the maximum value of the new scale.
+        @return: A value scaled within the new range a and b.
         """
-        return (range_b - range_a) * (x - min_x) / (max_x - min_x) + range_a
+        return (range_b - range_a) * (x_value - x_min) / (x_max - x_min) + range_a
 
     @staticmethod
     def find_hundredth_upper_bound(x, max_x, min_x, range_a, max_smoothed_value) -> float:
@@ -50,6 +45,14 @@ class Utility:
 
     @staticmethod
     def write_dict_to_csv(data: dict, output_dir: str, file_name: str, comments: str = None):
+        """
+        A method that takes a dictionary and uses  its keys as headers for a CSV file.
+
+        @param data: The data passed as a dictionary.
+        @param output_dir: full directory to which the output file should be saved.
+        @param file_name: The desired name for the generated file.
+        @param comments: Whether to add a comment to the CSV file header or not.
+        """
         project_root = f"{output_dir}{file_name}.csv"
 
         with open(project_root, "w") as e_file:
@@ -63,9 +66,9 @@ class Utility:
         After normalization, compares all the values in a list to the max value. If all values (other than the max)
         are below threshold compared to normalized max, then we are confident. Otherwise, we are not.
 
-        :param values: the list of values
-        :param k: the confidence threshold.
-        :return: whether all values are below k compared to the max or not.
+        @param values: The list of values
+        @param k: The confidence threshold.
+        @return: Whether all values are below k compared to the max or not.
         """
         if not values:
             raise RuntimeError("The list is empty!")
@@ -77,6 +80,7 @@ class Utility:
         if not values:  # there was only one value in the list, thus we must be confident.
             return True
 
+        # fixme: should we really return in this case?
         if max_val == max(values):  # the highest two values are the same, return fast
             return False
 
@@ -88,154 +92,18 @@ class Utility:
 
     @staticmethod
     def normalize(val, max_val, min_val):
+        """
+        Min-Max normalization (https://en.wikipedia.org/wiki/Feature_scaling#Rescaling_(min-max_normalization)).
+
+        @param val: Value to be normalized.
+        @param max_val: The maximum possible value in the dataset.
+        @param min_val: The minimum possible value in the dataset.
+        @return: A normalized value between 0 and 1.
+        """
         if (max_val - min_val) == 0:
             return 0.0
         else:
             return (val - min_val) / (max_val - min_val)
-
-    @staticmethod
-    def convert_durations_to_timedelta(durations: List[str]):
-        # TODO: delete as this is not used anymore
-        timedelta_durations = []
-        for duration in durations:
-            time_obj = datetime.datetime.strptime(duration, "%H:%M:%S")
-            timedelta_durations.append(datetime.time(hour=time_obj.hour,
-                                                     minute=time_obj.minute,
-                                                     second=time_obj.second))
-        return timedelta_durations
-
-    @staticmethod
-    def run_inputs_and_write_to_csv(dirname: str):
-
-        if not os.path.isdir(dirname):
-            raise RuntimeError(f"{dirname} is not a directory")
-
-        # get the file sorted by their modification time
-        files = sorted(Path(dirname).iterdir(), key=os.path.getmtime)
-
-        # make sure there are files in the dir.
-        if not files:
-            raise RuntimeError(f"There no files in {dirname}")
-
-        input_handler = InputHandler()
-        if not input_handler.is_connected():
-            print(f"No connection to input handler")
-
-        start_time = int(files[0].stat().st_mtime * 1000)  # first file m-time on ms
-        with open(f'{dirname}/costs.csv', "w") as e_file:
-            writer = csv.writer(e_file)
-            writer.writerow(['time_millisecond', 'total_exec_costs'])  # header
-
-            for f in files:
-                # get the files timestamp relative to the first file on list.
-                # file timestamp should be in milliseconds in accordance to PerfFuzz's timestamp
-                time_millisecond = int(f.stat().st_mtime * 1000) - start_time
-
-                with open(f, "rb") as tc:
-                    test_case = tc.read()
-                # print(test_case)
-                # print(test_case.decode("utf-8"))
-
-                cost, _, _, _ = input_handler.run_input(test_case, "wup")
-                # print(cost)
-                writer.writerow([time_millisecond, cost])
-
-    @staticmethod
-    def get_expr_description(file_name: str) -> tuple:
-        """
-        Given a file name for one of the experiment. This will do the necessary massaging to the name (old or new) to
-        return a name that is as unique to this experiment as possible without the data and time difference.
-
-        The necessity of this is to find files that match in terms of experiment settings and group them together.
-        Also, since this is a lot of work already. We take advantage of this and return an indicator to tell us if this
-        is a file for PerfFuzz or for one of our techniques.
-        :param file_name: the whole file name (e.g. "name.csv")
-        :return: a tuple of the base name and whether this is a perffuzz run or not (name, bool:True if for PerfFuzz).
-        """
-        if not file_name.endswith('.csv'):
-            raise RuntimeError(f"Can only process CSV files. Got {file_name}")
-
-        if file_name.startswith("PerfFuzz") or file_name.startswith("tool:PerfFuzz"):
-            if file_name.startswith('PerfFuzz'):  # old format
-                # Patter sample: "PerfFuzz-libxml2-60-may-11-02"
-                app_name = file_name.split('-')[:-3]  # split name by "-", and drop last 3 indicators (month, day, id).
-                expr_desc = []
-                ids = ['tool', 'app', 'budget']
-                for idx, val in enumerate(app_name):
-                    expr_desc.append(f"{val}:{ids[idx]}")
-                return "-".join(expr_desc), True  # rejoin with the same delimiter
-            else:
-                # Pattern sample "tool:PerfFuzz-app:libxml2-budget:60-month:may-day:11-id:01"
-                app_name = file_name.split('-')[:-3]  # split name by "-", and drop last 3 indicators (month, day, id).
-                return "-".join(app_name), True  # rejoin with the same delimiter
-        elif file_name.startswith('Progress-report') or file_name.startswith('PerfRL'):
-            # we have two possibilities here, "Progress-report" without indicator-ids or "Progress-report-app:..."
-            # which has the indicator ids and easy to parse.
-
-            # Pattern Sample: "Progress-report-libxml2(DroppingIdleTreesAfterUnique,Fixed20Threshold,
-            # AllSpecialChar)-lcc-gram-libxml2-free-typing.txt-c=1.5-e=20-lockingTrue-budget=60-reward-
-            # type=smoothed-SUB=1-iter=80000-05262021-092828.csv"
-            app_name = file_name.split('-')
-            if app_name[0] == 'PerfRL':
-                app_name = "-".join(app_name[1:-2])  # throw the first part and last two stings broken by delimiter
-            else:
-                app_name = "-".join(app_name[2:-2])  # throw the first and last two stings broken by delimiter
-
-            if app_name.startswith('app:'):
-                return app_name, False
-            else:
-                app_name = app_name.split('-')
-                has_description = False
-                if '(' in app_name[0] and ')' in app_name[0]:  # then this must have a description
-                    has_description = True
-
-                expr_desc = []
-                if has_description:
-                    app_name_and_desc = app_name[0].split('(')
-                    expr_desc.append(f'tool:PerfRL')
-                    expr_desc.append(f"app:{app_name_and_desc[0]}")
-                    expr_desc.append(f"desc:{app_name_and_desc[1][:-1]}")
-                    app_name.pop(0)  # we already parsed this, remove it
-                else:
-                    expr_desc.append(f'tool:PerfRL')
-                    expr_desc.append(f"app:{app_name.pop(0)}")
-
-                ids = ['alg', 'gram', 'c', 'e', 'locking', 'budget', 'RewardType', 'SUB', 'iter']
-
-                matching_parts = []
-                while app_name:
-                    part = app_name.pop(0)
-                    if part == 'gram':
-                        while app_name:  # inner loop to collect  gram file name
-                            gram_part = app_name.pop(0)
-                            if gram_part.endswith('.txt'):
-                                part += f'_{gram_part}'
-                                break
-                            else:
-                                part += f'_{gram_part}'
-                    if part == 'reward':
-                        part += app_name.pop(0)
-                    matching_parts.append(part)
-
-                for idx, val in enumerate(ids):
-                    info = matching_parts[idx].split('=')
-                    if len(info) > 1:
-                        info = info[1]
-                    else:
-                        info = "".join(info)
-                    expr_desc.append(f"{val}:{info}")
-
-                return "-".join(expr_desc), False
-        else:
-            # this is the new pattern. Parts are split by "-" and each part is split by ":"
-            # you only need to drop the file extension ".csv" then collect things easily
-            app_name = file_name[:-4]  # copy name and drop the ".csv"
-            app_name = app_name.split('-')
-            app_name = app_name[:-2]  # dropping the last two parts (date and time)
-            return "-".join(app_name), False
-        # else:
-        #     # Then we don't know what this file is, this must be a csv file passed by mistake
-        #     raise RuntimeError(f'Unknown file pattern {file_name}')
 
     @staticmethod
     def prep_expr_for_showmax(root_path: str, expr_dir: List[str]):
@@ -260,9 +128,8 @@ class Utility:
         used to be saved in the name, should be saved in a file named "expr-info.txt". Users of this method will use
         that file to retrieve the experiment information.
 
-        :param root_path:
-        :param expr_dir:
-        :return:
+        @param root_path:
+        @param expr_dir:
         """
         # TODO: read name given the new method for names
         if root_path.endswith('/'):  # remove the last backslash
@@ -342,7 +209,13 @@ class Utility:
             expr_id += 1
 
     @staticmethod
-    def remove_suffix(file_name: str, possible_suffixes=('+max', '+cov', '+cost')):
+    def remove_suffix(file_name: str, possible_suffixes=('+max', '+cov', '+cost')) -> str:
+        """
+        Helper function to remove the suffixes added to the input files names.
+        @param file_name: The file name with the undesired suffix.
+        @param possible_suffixes: The suffixes that we might encounter and would like  to remove.
+        @return: The same file name without any of the suffixes given.
+        """
         while file_name.endswith(possible_suffixes):
             for suffix in possible_suffixes:
                 if file_name.endswith(suffix):
@@ -351,6 +224,13 @@ class Utility:
 
     @staticmethod
     def get_expr_dirs(root_dir: str) -> list:
+        """
+        Helper function to collect the experiments directories for post-processing.
+
+        @param root_dir: The main directory where all the experiments are collected.
+        @return: A list of all the valid experiments directories.
+        """
+
         # collect  all sub-dir names in a list (if any)
         sub_dir = [f.name for f in os.scandir(root_dir) if f.is_dir()]
 
@@ -366,6 +246,14 @@ class Utility:
 
     @staticmethod
     def top_n(items: Iterable, n: int = 10, key: Callable = None) -> Iterable:
+        """
+        Get the top (max) n elements in an iterable.
+
+        @param items: The set of items to evaluate.
+        @param n: The number of items to return.
+        @param key: A key criteria to evaluate.
+        @return: An iterable of len n or less sorted based on the key if given.
+        """
         iter_len = sum(1 for _ in items)
         if n >= iter_len:
             return items
@@ -377,57 +265,14 @@ class Utility:
         return var
 
     @staticmethod
-    def show_max_cost_of_csv_files(path: str):
-        if not os.path.isdir(path):
-            raise RuntimeError(f"Path given is not a dir! PATH={path}")
-        files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
-
-        l_sum = 0
-        for file in sorted(files):
-            if file.startswith("."):
-                continue
-            df = pd.read_csv(f"{path}/{file}", comment="#")
-            l_max = df.cost.max()
-            l_sum += l_max
-            print(f"File {file}")
-            print(f"Max= {Utility.human_format(l_max)} ({l_max})")
-        avg = l_sum/len(files)
-        print(f"Average maximum cost is {Utility.human_format(avg)} ({avg})")
-
-    @staticmethod
-    def human_format(num):
+    def get_prc_of_value_above_threshold(data: List[int], k: int) -> float:
         """
-        As found in https://stackoverflow.com/a/45846841/3504748
-        :param num: the number we are formatting.
-        :return:
-        """
-        num = float('{:.3g}'.format(num))
-        magnitude = 0
-        while abs(num) >= 1000:
-            magnitude += 1
-            num /= 1000.0
-        return '{}{}'.format('{:f}'.format(num).rstrip('0').rstrip('.'), ['', 'K', 'M', 'B', 'T'][magnitude])
+        Given a list of data points, find the percentage of values above or equal to a given threshold
+        from the list. For example, if the list is [1,2,3,4,5] and k=3, then the return value is 0.6 (i.e., 60%).
 
-    @staticmethod
-    def get_tool_name_from_expr_file(exper_file: str) -> str:
-        indicators = exper_file.split('-')
-        if not indicators[0].startswith("tool:"):
-            raise RuntimeError(f"A tool name is not given in file: {exper_file}")
-
-        _, tool_name = indicators[0].split(":")
-        if tool_name in ["PerfRL", "PerfMCTS"]:
-            tool_name = "TreeLine"
-        return tool_name
-
-    @staticmethod
-    def incident_prc_of_value_threshold(data: List[int], k: int) -> float:
-        """
-        Given a list of data points. This method finds the percentage of values above or equal to a given threshold
-        from the list.
-
-        :param data: List of data points
-        :param k: threshold to compare against.
-        :return: percentage of instances larger or equal to k from data.
+        @param data: List of data points
+        @param k: Threshold to compare against.
+        @return: Percentage of instances larger or equal to `k` from `data`.
         """
         if data:
             x = sum(i >= k for i in data)  # num of values larger than or equal to k
