@@ -3,16 +3,83 @@ __email__ = "zalsaeed@cs.uoregon.edu"
 __status__ = "Testing"
 
 import os
+import re
+import sys
+import datetime
 import subprocess
 from typing import List, Iterable, Callable
 
 import pandas as pd
+import numpy as np
 from sympy.solvers import solve
 from sympy import Symbol
 from sympy import Eq
 
+from gramm.grammar import RHSItem
+from mcts.mctsnode import MCTSNode
+
 
 class Utility:
+
+    @staticmethod
+    def progress_bar(is_time_based: bool, start_time: datetime, iter_counter: int, num_rollouts: int,
+                     num_expansions: int, num_edges: int, num_hot_nodes: int, max_reward: float,
+                     refresh_threshold: float, uniqueness_per: float, tail_len: int, len_reward_weight: float,
+                     total_allowed_iter: int):
+        """
+        A method to show the progress bar of the run based on it whether being based on time or number of iter.
+
+        @param is_time_based:
+        @param start_time:
+        @param iter_counter:
+        @param num_rollouts:
+        @param num_expansions:
+        @param num_edges:
+        @param num_hot_nodes:
+        @param max_reward:
+        @param refresh_threshold:
+        @param uniqueness_per:
+        @param tail_len:
+        @param len_reward_weight:
+        @param total_allowed_iter:
+        """
+        sys.stdout.write('\r')
+        if is_time_based:
+            sys.stdout.write("Duration(m)= %.5f, iter #%.1f, rollouts=%.1f, expansions=%.1f, edges=%.1f, "
+                             "hot-nodes=%.1f, rMax=%.1f, refresh-threshold=%.5f, uniquenessPRC=%.5f, "
+                             "len(tail)=%.3f, rw=%.1f" %
+                             ((datetime.datetime.now() - start_time).seconds / 60,
+                              iter_counter,
+                              num_rollouts,
+                              num_expansions,
+                              num_edges,
+                              num_hot_nodes,
+                              max_reward,
+                              refresh_threshold,
+                              uniqueness_per,
+                              tail_len,
+                              len_reward_weight
+                              )
+                             )
+        else:
+            sys.stdout.write("[%-50s] %.2f%%, iter #%.1f, rollouts=%.1f, expansions=%.1f, edges=%.1f, "
+                             "hot-nodes=%.1f, rMax=%.1f, refresh-threshold=%.5f, uniquenessPRC=%.5f, "
+                             "len(tail)=%.1f, rw=%.3f" %
+                             ('=' * int(50 * iter_counter / (total_allowed_iter - 1)),
+                              100 * iter_counter / (total_allowed_iter - 1),
+                              iter_counter,
+                              num_rollouts,
+                              num_expansions,
+                              num_edges,
+                              num_hot_nodes,
+                              max_reward,
+                              refresh_threshold,
+                              uniqueness_per,
+                              tail_len,
+                              len_reward_weight
+                              )
+                             )
+        sys.stdout.flush()
 
     @staticmethod
     def scale_to_range(x_value, x_max, x_min, range_a, range_b) -> float:
@@ -279,3 +346,159 @@ class Utility:
             return x / len(data)
         else:
             return 0.0
+
+    @staticmethod
+    def find_prc_of_val_greater_than(data: List[int], k: int) -> float:
+        if data:
+            x = sum(i >= k for i in data)  # num of values larger than or equal to k
+            return x/len(data)
+        else:
+            return 0.0
+
+    @staticmethod
+    def find_prc_uniq_values(data: List[int]) -> float:
+        """
+        A function to calculate the percentage of duplicate value in a list. For example, if data=[1,1,1,2] then the
+        return value will be 0.5 (or 50%). That is out of the four element only 50% are unique.
+
+        @param data: A list of numbers.
+        @return:  The percentage of unique value to the number of element in the list.
+        """
+        if data:
+            return len(np.unique(data)) / len(data)
+        else:
+            return 0.0  # special case
+
+    @staticmethod
+    def tree_state(node: MCTSNode) -> str:
+        """
+        Tree printing helper method.
+
+        @param node: The root node from which we would like to start the printing process.
+        """
+        indent = "    "
+        tree = ''
+        tree += f"{node.level*indent}{node}\n"
+        for child in node.get_children():
+            tree += Utility.tree_state(child)
+        return tree
+
+    @staticmethod
+    def tree_to_dot(node: MCTSNode) -> str:
+        """
+        Generate a tree written in a dot language for post-print rendering. The method works for the target applications
+        we tried. However, there is no guarantee that it would work for all target applications as the depending on the
+        applications' language it can interfere with the dot code.
+
+        @param node: The root node from which we would print the tree.
+        @return: The dot file as a string.
+        """
+        # open the graph and add high-level attributes
+        dot_rep = "digraph {\n"
+        dot_rep += "\tnode [shape=record, colorscheme=rdylbu11];\n"
+
+        # add graph nodes based on tree (body)
+        dot_rep += Utility.node_to_struct(node, True)
+
+        # add the legend and close the whole graph
+        dot_rep += "\tsubgraph cluster_key {\n"
+        dot_rep += "\t\trank=sink;\n"
+        dot_rep += "\t\tstyle = filled;\n"
+        dot_rep += "\t\tcolor=lightgrey;\n"
+        dot_rep += "\t\tlabel=\"Legend\";\n"
+        dot_rep += "\t\tdetails [label=\"{Generated input\\n'' means empty|len(input)= length \\nof generated input|" \
+                   "# used tokens = total terminal token \\nused to generated the shown input \\nwhich must never " \
+                   "exceed the budget}|" \
+                   "SYMBOL\\nunder evaluation|" \
+                   "{AB= Allowed Budget|PB= Passed Budget|len(s)= Stack Size}|" \
+                   "STACK|" \
+                   "{V= Total Costs (sum) based on \\nany descendant of this node|N= No. of Visits|UCB= UCB value to " \
+                   "reach \\nthis node from parent}" \
+                   "}\"];\n"
+        dot_rep += "\t\tbest_intermediate [label=\"Intermediate Node in Best Path\"; style=filled; fillcolor=8]\n"
+        dot_rep += "\t\tbest_leaf [label=\"Leaf Node in Best Path\"; style=filled; fillcolor=7]\n"
+        dot_rep += "\t\tbest_terminal [label=\"Terminal Node in Best Path\"; style=filled; fontcolor=white; " \
+                   "fillcolor=9]\n"
+        dot_rep += "\t\tintermediate [label=\"Intermediate Node\"; style=filled; fillcolor=4]\n"
+        dot_rep += "\t\tleaf [label=\"Leaf Node\"; style=filled; fillcolor=5]\n"
+        dot_rep += "\t\tterminal [label=\"Terminal Node\"; style=filled; fillcolor=3]\n"
+        dot_rep += "\t}\n"
+        dot_rep += "}\n"
+
+        return dot_rep
+
+    @staticmethod
+    def node_to_struct(node: MCTSNode, is_best: bool) -> str:
+
+        if node.locked:
+            dot_struct = f"\tstruct{id(node)} [style=filled; fontcolor=white; fillcolor=black; label=\""
+        elif is_best:  # blue background
+            if node.is_terminal():
+                dot_struct = f"\tstruct{id(node)} [style=filled; fontcolor=white; fillcolor=9; label=\""
+            elif node.is_leaf():
+                dot_struct = f"\tstruct{id(node)} [style=filled; fillcolor=7; label=\""
+            else:
+                dot_struct = f"\tstruct{id(node)} [style=filled; fillcolor=8; label=\""
+        else:  # gold background
+            if node.is_terminal():
+                dot_struct = f"\tstruct{id(node)} [style=filled; fillcolor=3; label=\""
+            elif node.is_leaf():
+                dot_struct = f"\tstruct{id(node)} [style=filled; fillcolor=5; label=\""
+            else:
+                dot_struct = f"\tstruct{id(node)} [style=filled; fillcolor=4; label=\""
+
+        # input and len of input
+        # escape all characters except the ones specified below, because they could be graphviz chars.
+        dot_struct += "{'" + re.sub("([^a-zA-Z0-9])", r"\\\1", node.text) + "'| "
+        dot_struct += f" len(input): {len(node.text)}|# used tokens: {node.tokens_used}"
+        dot_struct += "}|"
+
+        # symbol in hand
+        if isinstance(node.symbol, RHSItem):
+            # escape all characters except the ones specified below
+            dot_struct += re.sub("([^a-zA-Z0-9])", r"\\\1", node.symbol.__str__()) + "|"
+        else:
+            dot_struct += f"{node.symbol}|"
+
+        # budget and stack information
+        dot_struct += "{"
+        dot_struct += f"AB: {node.allowed_budget}|PB:{node.budget}|len(s):{len(node.stack)}"
+        dot_struct += "}|"
+
+        # stack content
+        reversed_stack = node.stack[::-1]
+        dot_struct += "{"
+        if reversed_stack:
+            for item in reversed_stack:
+                # escape all characters except the ones specified below
+                dot_struct += re.sub("([^a-zA-Z0-9])", r"\\\1", item.__str__()) + "|"
+            dot_struct = dot_struct[:-1]  # removing the last char "|" in the string.
+        else:
+            dot_struct += f"EMPTY\\nSTACK"
+        dot_struct += "}|"
+
+        # MCTS information (V, N, UCB)
+        dot_struct += "{"
+        dot_struct += f"V: {node.get_total_cost()}|N: {node.get_visits()}| UCB1: {node.get_ucb1()}"
+        dot_struct += "}\"];\n"
+
+        if node.get_children() and is_best:  # if it has children, and it is in the best path, then get the max child
+            max_child = max(node.get_children(), key=lambda n: n.get_ucb1())
+            max_ucb = max_child.get_ucb1()  # get the best child ucb1 value for coloring
+        else:
+            max_ucb = -1.0
+
+        for child in node.get_children():
+            if child.get_ucb1() == max_ucb:
+                dot_struct += Utility.node_to_struct(child, True)
+            else:
+                dot_struct += Utility.node_to_struct(child, False)
+            dot_struct += f"\tstruct{id(node)} -> struct{id(child)} "
+            c = Utility.scale_to_range(child.level, 181, 0, 1, 2)
+            if child.get_ucb1() == float("inf") or child.get_ucb1() == float("-inf"):
+                dot_struct += f"[taillabel=\"C={round(c, 2)}, UCB={round(child.get_ucb1(), 4)}, " \
+                              f"level={child.level}\"; penwidth={0.5}];\n"
+            else:
+                dot_struct += f"[taillabel=\"C={round(c, 2)}, UCB={round(child.get_ucb1(), 4)}, " \
+                              f"level={child.level}\"; penwidth={round(child.get_ucb1(), 4)}];\n"
+        return dot_struct

@@ -5,7 +5,6 @@ __status__ = "Testing"
 import os
 import gc
 import sys
-import re
 import time
 import random
 import _pickle as cpickle
@@ -34,24 +33,43 @@ class MonteCarloTreeSearch:
     def __init__(self, gram: Grammar, output_dir: str, expr_id: str, budget: int, reward_type: str,
                  hundredth_upper_bound: int, use_locking: bool = False, use_bias: bool = False, max_reward: int = 1,
                  tail_len: int = 5000, max_threshold: float = 0.5, threshold_decay: float = 0.0001):
+        """
+        The initializer of the TreeLine algorithm and the BiasOnly algorithm.
+
+        @param gram: The grammar used to search for expensive input in the target application.
+        @param output_dir: The directory where all the inputs generated and logs should be saved
+        @param expr_id: A unique identifier for the experiment that should help the user find this run.
+        @param budget: The allowed maximum budget regardless of how the budget is defined.
+        @param reward_type: The reward function to be used in this search.
+        @param hundredth_upper_bound:
+        @param use_locking: If True, any node that is exhausted will be locked from future visits
+            (i.e., as if it doesn't exist anymore).
+        @param use_bias: If True, the rollouts will use the bias function instead of completely random search.
+        @param max_reward:
+        @param tail_len:
+        @param max_threshold:
+        @param threshold_decay:
+        """
         self.log = logging.getLogger(self.__class__.__name__)
+
         self.digest = TDigest()
         self.output_dir = output_dir
         self.expr_id = expr_id
         self.use_locking = use_locking
         self.use_bias = use_bias
-        self.max_reward = max_reward
-
+        self.max_reward = max_reward  # TODO: this must be removed as it multiplies the cost reward by 100. A careful observation should be made once it changed.
         self.gram = gram
         self.allowed_budget = budget
+        self.reward_type = reward_type
+        self.hundredth_upper_bound = hundredth_upper_bound
+        # self.hundredth_upper_bound = 100  TODO: delete
         self.root = MCTSNode(budget=self.allowed_budget, text="", stack=[self.gram.start], tokens=0,
                              use_locking=use_locking)
         self.original_root = self.root  # necessary for the root pruning only
         self.original_root.start_connection()
-        self.current = self.root
-        self.reward_type = reward_type
-        self.hundredth_upper_bound = hundredth_upper_bound
-        # self.hundredth_upper_bound = 100
+        self.current = self.root  # fixme: either this or self.original_root. It is confusion to have the two.
+
+        # statistical and tracking variables.
         self.average_cost = 0.0  # the average cost that will be found based on the warmup phase
         self.len_buffer = collections.deque(maxlen=100)
         self.len_w = 0.0
@@ -91,11 +109,30 @@ class MonteCarloTreeSearch:
         self.report_dict['Progress: # total expansions'] = str(0)
         self.report_dict['Progress: # total edges'] = str(0)
 
+    def write_tree_to_file_as_dot(self):
+        """
+        Write tree to file in dot language for post-search visualization.
+        """
+        tree_dir = f"{self.output_dir}trees/"
+        if not os.path.exists(tree_dir):
+            os.makedirs(tree_dir)
+        with open(f"{tree_dir}{self.reset_counter:02d}-TreeVis.dot", "w") as tree_file:
+            tree_file.write(Utility.tree_to_dot(self.root))
+
     def save_tree(self):
+        """
+        Save the current tree to file.
+        """
+        # TODO: Can be added to util.
         with open(f"{self.output_dir}/{self.expr_id}.tree", "wb") as file_:
             cpickle.dump(self.original_root, file_)
 
     def load_tree(self, file_name: str):
+        """
+        Load tree from file.
+        @param file_name: The tree file name.
+        """
+        # TODO: Can be added to util.
         if not os.path.isfile(file_name):
             raise RuntimeError(f"The string given {file_name} is not a file!")
         if not file_name.endswith(".tree"):
@@ -114,6 +151,11 @@ class MonteCarloTreeSearch:
         self.tail_len = mg.tails[idx]
 
     def adjust_max_reward(self):
+        """
+
+        @return:
+        """
+        # TODO: delete the whole method
         diff = self.max_observed_cost - self.min_observed_cost
         if diff/self.min_observed_cost > 1.0:
             self.max_reward = 1
@@ -131,7 +173,7 @@ class MonteCarloTreeSearch:
 
         # LOG: export the tree we have to dot before dropping it.
         if mg.extensive_data_tracking:
-            self.write_tree_to_file()
+            self.write_tree_to_file_as_dot()
 
         # To carry the bias between trees
         bias_temp = self.root.bias
@@ -163,14 +205,14 @@ class MonteCarloTreeSearch:
         self.exec_since_last_reset = 0
         self.reset_counter += 1
 
-    def write_tree_to_file(self):
-        tree_dir = f"{self.output_dir}trees/"
-        if not os.path.exists(tree_dir):
-            os.makedirs(tree_dir)
-        with open(f"{tree_dir}{self.reset_counter:02d}-TreeVis.dot", "w") as tree_file:
-            tree_file.write(self.tree_to_dot())
+    def has_new_cost(self, cost: int) -> bool:
+        """
+        Check with the cost passed is a new maximum cost or not and adjust all the tracking variables accordingly
+        if it demonstrates a new maximum.
 
-    def has_new_cost(self, cost) -> bool:
+        @param cost: The new cost to evaluate.
+        @return: True if the cost passed is a new maximum and False otherwise.
+        """
         if cost > self.max_observed_cost:
             self.max_observed_cost = cost
 
@@ -184,7 +226,7 @@ class MonteCarloTreeSearch:
             self.exec_count_since_last_increase = 0
             self.observed_new_cost_at_least_once = True
 
-            # if not quantile reward, adjust the upper bound.
+            # if not quantile reward, adjust the upper bound.  TODO: this is not necessary anymore.
             if self.reward_type != 'quantile':
                 diff = cost - self.min_observed_cost
                 prc = diff/self.min_observed_cost * 100
@@ -199,6 +241,12 @@ class MonteCarloTreeSearch:
             return False
 
     def has_new_hotspot(self, hotspot) -> bool:
+        """
+        Check with the hotspot value passed is a new maximum or not and adjust all the tracking variables accordingly
+        if it demonstrates a new maximum.
+        @param hotspot: The value observed for the hotspot.
+        @return: True if the hotspot passed is a new maximum and False otherwise.
+        """
         if hotspot > self.max_observed_hotspot:
             self.max_observed_hotspot = hotspot
             return True
@@ -206,6 +254,13 @@ class MonteCarloTreeSearch:
             return False
 
     def warm_up(self) -> bool:
+        """
+
+        @return:
+        """
+
+        # TODO: remove this method. We don't need it anymore with quantiles as rewards. Maybe we only need it to
+        #  validate the grammar and the app work.
         unique_random_input = {}
         n = 20
         start_time = datetime.datetime.now()
@@ -263,18 +318,18 @@ class MonteCarloTreeSearch:
         warmup_file.close()
         return True
 
-    def lcc(self, time_based: bool, time_cap_h=1, num_iter=100):
+    def treeline(self, is_time_based: bool, time_cap_h=1, num_iter=100):
         """
         The main method to run (train) the algorithm. An iteration is a derivation that starts from the root node. Any
         derivation would end at a terminal. However, the reach of the terminal could be based on the tree observed UCB1
         values or random (rollout).
 
-        :param time_based: A boolean to make the run based on either time cap (True) or num of iteration (False).
-        :param num_iter: The number of derivations we would like to do from root to terminal.
-        :param time_cap_h: The maximum time allowed for a run in hours.
+        @param is_time_based: A boolean to make the run based on either time cap (True) or num of iteration (False).
+        @param num_iter: The maximum number of derivations (target app runs) that are allowed.
+        @param time_cap_h: The maximum time allowed for a run in hours.
         """
-        # dir to track cov and max inputs:
-        buffer_dir = f"{self.output_dir}buffer/"
+
+        buffer_dir = f"{self.output_dir}hot_nodes/"  # dir to track cov and max inputs
         os.makedirs(buffer_dir)
 
         # tracking variables
@@ -284,12 +339,12 @@ class MonteCarloTreeSearch:
         input_id = 1
         progress_report = collections.defaultdict(list)
 
-        # LCC related variables
-        buffer: List[MCTSNode] = []  # buffer of all hnb, hnm, or hnc non-terminal nodes.
-        buffer_top_n: List[MCTSNode] = []  # top n nodes from buffer given their UCT value at some point
-        prop_threshold = 0.5  # the probability of selecting a node from the buffer vs. using the root node
+        # TreeLine related variables
+        hot_nodes: List[MCTSNode] = []  # hot_nodes of all hnb, hnm, or hnc non-terminal nodes.
+        top_n_hot_nodes: List[MCTSNode] = []  # top n nodes from hot_nodes given their UCT value at some point
+        hot_node_prop_threshold = 0.5  # the probability of selecting a node from the hot_nodes vs. using the root node
 
-        # [buffer-plot] tracking buffer nodes only, this is expensive.
+        # [hot_nodes-plot] tracking hot_nodes only, this is expensive. TODO: remove the tracking.
         # it doesn't hurt ti creat an empty dict, thus we don't use the flag mg.extensive_data_tracking
         track_costs: Dict[int, int] = collections.defaultdict()
         track_ucb = collections.defaultdict(list)
@@ -304,76 +359,46 @@ class MonteCarloTreeSearch:
 
             # update the top n nodes every 500 iterations.
             if i % 500 == 0:
-                buffer_top_n = list(Utility.top_n(buffer, n=10, key=lambda n: n.get_ucb1()))
+                top_n_hot_nodes = list(Utility.top_n(hot_nodes, n=10, key=lambda n: n.get_ucb1()))
 
-            # with some random value, either keep the root node or select the best node from top n buffer
-            if random.random() > prop_threshold:
-                if buffer_top_n:
-                    self.current = max(buffer_top_n, key=lambda n: n.get_ucb1())
+            # with some random value, either keep the root node or select the best node from top n hot_nodes
+            if random.random() > hot_node_prop_threshold:
+                if top_n_hot_nodes:
+                    self.current = max(top_n_hot_nodes, key=lambda n: n.get_ucb1())
 
-            # [buffer-plot] tracking buffer nodes only, this is expensive.
+            # [hot_nodes-plot] tracking hot_nodes nodes only, this is expensive. TODO: remove
             if mg.extensive_data_tracking:
-                # log the uct value for each node in the buffer.
-                for node in buffer:
-                    cost = track_costs[id(node)]  # the cost for which this node was added to buffer (used in key)
+                # log the uct value for each node in the hot_nodes.
+                for node in hot_nodes:
+                    cost = track_costs[id(node)]  # the cost for which this node was added to hot_nodes (used in key)
                     track_ucb[f"{node.get_signature()}-{cost}"].append(node.get_ucb1())
 
             # LOG: logging uniqueness and prep for check to drop the tree
             uniqueness_percentage = 1.0 if self.exec_since_last_reset < self.tail_len \
-                else MonteCarloTreeSearch.find_prc_uniq_values(progress_report['execution_cost'][-self.tail_len:])
+                else Utility.find_prc_uniq_values(progress_report['execution_cost'][-self.tail_len:])
 
-            # progress bar (info) prints (different for time vs. iter based). Should be in its own function!
-            sys.stdout.write('\r')
-            if time_based:
-                sys.stdout.write("Duration(m)= %.5f, iter #%.1f, rollouts=%.1f, expansions=%.1f, edges=%.1f, "
-                                 "prunes=%.1f, rMax=%.1f, refresh-threshold=%.5f, uniquenessPRC=%.5f, len(tail)=%.3f, "
-                                 "rw=%.1f" %
-                                 ((datetime.datetime.now() - expr_start_time).seconds/60,
-                                  i,
-                                  rollouts,
-                                  expansions,
-                                  edges,
-                                  len(buffer),
-                                  self.max_reward,
-                                  1 - self.epsilon.get_exploration_rate(self.exec_since_last_reset),
-                                  uniqueness_percentage,
-                                  self.tail_len,
-                                  self.len_w
-                                  )
-                                 )
-            else:
-                sys.stdout.write("[%-50s] %.2f%%, iter #%.1f, rollouts=%.1f, expansions=%.1f, edges=%.1f, prunes=%.1f, "
-                                 "rMax=%.1f, refresh-threshold=%.5f, uniquenessPRC=%.5f, len(tail)=%.1f, rw=%.3f" %
-                                 ('=' * int(50 * i / (num_iter - 1)),
-                                  100 * i / (num_iter - 1),
-                                  i,
-                                  rollouts,
-                                  expansions,
-                                  edges,
-                                  len(buffer),
-                                  self.max_reward,
-                                  1-self.epsilon.get_exploration_rate(self.exec_since_last_reset),
-                                  uniqueness_percentage,
-                                  self.tail_len,
-                                  self.len_w
-                                  )
-                                 )
-            sys.stdout.flush()
+            # progress bar (info) prints (different for time vs. iter based).
+            Utility.progress_bar(is_time_based=is_time_based, start_time=expr_start_time, iter_counter=i,
+                                 num_rollouts=rollouts, num_expansions=expansions, num_edges=edges,
+                                 num_hot_nodes=len(hot_nodes), max_reward=self.max_reward,
+                                 refresh_threshold=1 - self.epsilon.get_exploration_rate(self.exec_since_last_reset),
+                                 uniqueness_per=uniqueness_percentage, tail_len=self.tail_len,
+                                 len_reward_weight=self.len_w, total_allowed_iter=num_iter)
 
             if mg.extensive_data_tracking:
                 self.log.debug(f"Iter: {i}")
 
-            # OK, now we have some node and would like to travers the tree based on the UCT value.
+            # OK, now we have some node and would like to travers the tree based on the UCB1 value.
             while not self.current.is_leaf():  # a leaf node is either a terminal node or a non-expanded node yet.
                 best_child = self._select()
                 self.current = best_child
 
-            # if all nodes are expanded and we reach a terminal node get cost
+            # if all nodes are expanded, and we reach a terminal node, get cost
             if self.current.is_terminal():
                 final_input, ac, hnb, hnm, hs, is_anomalous = self.current.run()
                 tokens_used = self.current.tokens_used
 
-                # update the bias if we are using it.
+                # update the bias if we are using it. TODO: why are we updating the bias here but not in the rollout
                 if self.use_bias:
                     if ac > self.max_observed_cost or hnb or hnm:
                         self.current.bias.reward()
@@ -396,32 +421,34 @@ class MonteCarloTreeSearch:
                 final_input, ac, hnb, hnm, hs, is_anomalous, tokens_used = self.rollout()
 
             # Now evaluate the run we did. If there is a cov increase then mark the node accordingly regardless if the
-            # run was is anomalous or not.
+            # run is anomalous or not.
             if hnb:  # not 0 (we don't care either 1 or 2)
                 self.current.set_hnb(hnb)
             if hnm:
                 self.current.set_hnm(hnm)
-            hnh = self.has_new_hotspot(hs)  # calling it updates the known max hs
+            hnh = self.has_new_hotspot(hs)  # calling it updates the known max hs in treeline side.
             if hnh:
                 self.current.set_hotspot(hs)
-            hnc = self.has_new_cost(ac)  # calling it updates the known max cost
+            hnc = self.has_new_cost(ac)  # calling it updates the known max cost in treeline side
 
-            # shall we add the current node to buffer?
-            if not self.current.is_terminal():
-                if hnb or hnm or hnc:  # and tokens_used >= max_len):
-                    if self.current not in buffer:
-                        buffer.append(self.current)
+            # shall we add the current node to hot_nodes?
+            if not self.current.is_terminal():  # no value of adding terminals to hot-nodes
+                if hnb or hnm or hnc:
+                    if self.current not in hot_nodes:
+                        hot_nodes.append(self.current)
                         if mg.extensive_data_tracking:
-                            # [buffer-plot] A new node added to buffer, we must track the cost for which it was added
+                            # [hot_nodes-plot] A new node added to hot_nodes, we must track the cost for which it was
+                            # added. TODO: remove as this is expensive
                             track_costs[id(self.current)] = ac
 
-            # if the run is anomalous, make a note but don't back-propagate any info based on wrong runs!
+            # if the run is anomalous, make a note but don't back-propagate any info based on wrong run!
             if is_anomalous:
                 self.count_of_anomalous_runs += 1  # make sure we track this incident
             else:
                 self.exec_since_last_reset += 1
-                # first backpropagate from current given the reward. We have two different calls because of the binary
-                # rewards. This should be removed if it doesn't prove to be any good.
+                # first back-propagate from current given the reward.
+                # TODO: We have two different calls because of the binary rewards. This should be removed if it
+                #  doesn't prove to be any good.
                 if hnb or hnm or hnc:
                     reward = self._get_reward(ac, tokens_used, self.reward_type, self.hundredth_upper_bound, 1)
                     self._backpropagate(reward)
@@ -454,7 +481,7 @@ class MonteCarloTreeSearch:
                     progress_report["hnb"].append(hnb)
                     progress_report["hnm"].append(int(hnm))
                     progress_report["hs"].append(hs)
-                    progress_report["prunes"].append(len(buffer))
+                    progress_report["hot_nodes"].append(len(hot_nodes))
                     progress_report["derivation_len"].append(tokens_used)
                     progress_report["refresh_threshold"].append(
                         1-self.epsilon.get_exploration_rate(self.exec_since_last_reset))
@@ -474,6 +501,7 @@ class MonteCarloTreeSearch:
                 if hnc:
                     postfix += "+cost"
                 cur_ms = time.time_ns() // 1_000_000
+                # TODO: change the len tracking to be based on the len given by the user (e.g., char, or byte).
                 with open(f"{buffer_dir}id:{input_id:06d},cost:{ac:010d},hs:{hs:010d},hnb:{hnb},exec:{i},"
                           f"len:{len(bytes(final_input, 'utf-8')):03d},tu:{tokens_used:03d},crtime:{cur_ms},"
                           f"dur:{cur_ms-start}{postfix}", "wb") as cov_file:
@@ -481,10 +509,11 @@ class MonteCarloTreeSearch:
                 input_id += 1
 
             # now evaluate if the current tree should be dropped
-            if self.exec_since_last_reset >= self.tail_len:  # did we give it enough time according to the tail?
+            if self.exec_since_last_reset >= self.tail_len:  # did we give it enough runs according to the tail?
                 if self.has_stabilized(uniqueness_percentage):  # did it stabilize?
 
                     # track progress for experiment stats
+                    # TODO: change how we track the info to be more concise.
                     self.report_dict['Progress: # total rollouts'] = \
                         str(int(self.report_dict['Progress: # total rollouts']) + rollouts)
                     self.report_dict['Progress: # total expansions'] = \
@@ -494,11 +523,11 @@ class MonteCarloTreeSearch:
                     self.report_dict[f'Progress: Tree #{self.reset_counter}'] = f"rollouts={rollouts}, " \
                                                                                 f"expansions={expansions}, " \
                                                                                 f"edges={edges}, " \
-                                                                                f"buffer-size={len(buffer)}, " \
+                                                                                f"hot_nodes-size={len(hot_nodes)}, " \
                                                                                 f"#-of-iter=" \
                                                                                 f"{self.exec_since_last_reset}"
 
-                    buffer.clear()  # clear the lcc buffer
+                    hot_nodes.clear()  # clear the lcc hot_nodes
                     rollouts = expansions = edges = 0  # resetting tree ops tracking variables
                     self.observed_new_cost_at_least_once = False  # resetting the key for the reset decision
                     self._reset()  # now we can drop the tree and start a new one.
@@ -516,17 +545,17 @@ class MonteCarloTreeSearch:
                 self.report_dict[f'Progress: Tree #{self.reset_counter}'] = f"rollouts={rollouts}, " \
                                                                             f"expansions={expansions}, " \
                                                                             f"edges={edges}, " \
-                                                                            f"buffer-size={len(buffer)}, " \
+                                                                            f"hot_nodes-size={len(hot_nodes)}, " \
                                                                             f"#-of-iter=" \
                                                                             f"{self.exec_since_last_reset}"
 
-                buffer.clear()  # clear the lcc buffer
+                hot_nodes.clear()  # clear the lcc hot_nodes
                 rollouts = expansions = edges = 0  # resetting tree ops tracking variables
                 self.observed_new_cost_at_least_once = False  # resetting the key for the reset decision
                 self._reset()  # now we can drop the tree and start a new one.
 
             # checking if we should break the loop based on duration base configuration
-            if time_based:
+            if is_time_based:
                 if datetime.datetime.now() - expr_start_time > expr_max_time:
                     print("\nDone searching based on time!")
                     break
@@ -547,7 +576,7 @@ class MonteCarloTreeSearch:
         self.report_dict['Time: duration(s)'] = str(elapsed_time/1_000)
         self.report_dict['Time: duration(m)'] = str(elapsed_time/60_000)
         self.report_dict['Time: duration(h)'] = str(elapsed_time/3_600_000)
-        self.report_dict['Duration-Config: Is Duration based on Time?'] = str(time_based)
+        self.report_dict['Duration-Config: Is Duration based on Time?'] = str(is_time_based)
         self.report_dict['Duration-Config: Time allowed in hours'] = str(time_cap_h)
         self.report_dict['Duration-Config: # of iterations'] = str(num_iter)
         self.report_dict['Results: max cost'] = str(self.max_observed_cost)
@@ -565,7 +594,7 @@ class MonteCarloTreeSearch:
         self.report_dict[f'Progress: Tree #{self.reset_counter}'] = f"rollouts={rollouts}, " \
                                                                     f"expansions={expansions}, " \
                                                                     f"edges={edges}, " \
-                                                                    f"buffer-size={len(buffer)}, " \
+                                                                    f"hot_nodes-size={len(hot_nodes)}, " \
                                                                     f"#-of-iter={self.exec_since_last_reset}"
 
         # whether we use it or not, print the bias table
@@ -574,7 +603,7 @@ class MonteCarloTreeSearch:
 
         # Write the last known tree to file
         if mg.extensive_data_tracking:
-            self.write_tree_to_file()
+            self.write_tree_to_file_as_dot()
 
         # LOG: write progress report to file
         if mg.extensive_data_tracking:
@@ -588,9 +617,9 @@ class MonteCarloTreeSearch:
                                                f"{int(self.report_dict['Progress: # total expansions'])}, "
                                                f"total edges: {int(self.report_dict['Progress: # total edges'])}, "
                                                f"total anomalous runs: {self.count_of_anomalous_runs}, "
-                                               f"Starting node threshold: {prop_threshold}")
+                                               f"Starting node threshold: {hot_node_prop_threshold}")
 
-        # [buffer-plot] for reporting the buffer ucb(s) only, remove once done. This is expensive.
+        # [hot_nodes-plot] for reporting the hot_nodes ucb(s) only. TODO: remove once done. This is expensive.
         if mg.extensive_data_tracking:
             max_tracked_len = 0
             for k, v in track_ucb.items():
@@ -611,9 +640,9 @@ class MonteCarloTreeSearch:
         derivation would end at a terminal. However, the reach of the terminal could be based on the tree observed UCB1
         values or random (rollout).
 
-        :param time_based: A boolean to make the run based on either time cap (True) or num of iteration (False).
-        :param num_iter: The number of derivations we would like to do from root to terminal.
-        :param time_cap_h: The maximum time allowed for a run in hours.
+        @param time_based: A boolean to make the run based on either time cap (True) or num of iteration (False).
+        @param num_iter: The number of derivations we would like to do from root to terminal.
+        @param time_cap_h: The maximum time allowed for a run in hours.
         """
         # dir to track cov and max inputs:
         buffer_dir = f"{self.output_dir}buffer/"
@@ -765,7 +794,7 @@ class MonteCarloTreeSearch:
 
         # Write the last known tree to file
         if mg.extensive_data_tracking:
-            self.write_tree_to_file()
+            self.write_tree_to_file_as_dot()
 
         # LOG: write progress report to file
         if mg.extensive_data_tracking:
@@ -782,23 +811,23 @@ class MonteCarloTreeSearch:
 
     def _select(self) -> MCTSNode:
         """
-        Choose the best successor of current. (Choose a move). Can't be called on a terminal or unexpanded nodes.
+        Choose the best successor of current node (choose a move). Can't be called on a terminal or unexpanded nodes.
 
-        :return: the best child node.
+        @return: The best child node of the current node.
         """
         if self.current.is_terminal():
-            raise RuntimeError(f"called on terminal node {self.current}")
+            raise RuntimeError(f"Trying to select a a child node from the terminal node {self.current}")
 
         if not self.current.get_children():
-            raise RuntimeError(f"called on an unexpanded node {self.current}")
+            raise RuntimeError(f"The current node {self.current} has no populated children to select from.")
 
         return max(self.current.get_children(), key=lambda node: node.get_ucb1())
 
     def rollout(self, warmup=False) -> Tuple[str, int, int, bool, int, bool, int]:
         """
-        Randomly expand the tree from the current node until you reach terminal node.
+        Expand the tree from the current node until you reach terminal node either randomly or using the bias.
 
-        :return: run information of the randomly generated input (text, ac, hnb, hnm, hs, is_anomalous, tokens_used)
+        @return: Run information of the generated input (text, ac, hnb, hnm, hs, is_anomalous, tokens_used).
         """
         s_i = self.current
         while not s_i.is_terminal():
@@ -832,7 +861,9 @@ class MonteCarloTreeSearch:
 
     def expand(self) -> int:
         """
-        Add children to node.
+        Populate the children of the current node.
+
+        @return: The number of valid children populated.
         """
         if not self.current.is_terminal():
             self.current.populate_children()
@@ -843,9 +874,10 @@ class MonteCarloTreeSearch:
 
     def _backpropagate(self, reward: float):
         """
-        Send the reward back up to the ancestors of the current.
+        Send the reward back up to the ancestors of the current. The back-propagation updates both the reward found
+        from the execution and the count of visits. The count is implicits here (taken care of by the update function).
 
-        :param reward: the cost observed at the current node (rolling out to terminal or itself being a terminal)
+        @param reward: The reward observed at the current node (rolling out to terminal or itself being a terminal).
         """
         self.current.update(reward)  # make sure we update the current first
         s = self.current
@@ -856,31 +888,23 @@ class MonteCarloTreeSearch:
 
     def _get_reward(self, cost: int, input_len: int, reward_type: str, hundredth_upper_bound: float,
                     binary_val: int) -> float:
-        if reward_type == 'quantile':
-            if self.reset_counter <= 1:  # we only adjust the reward function on the first tree
-                self.len_buffer.append(input_len)
-                if not self.raw_len_based_reward:  # and if we settle for raw, that's it, never going back
-                    if len(self.len_buffer) == self.len_buffer.maxlen:
-                        top_20_prc = int(0.8 * self.allowed_budget)
-                        if Utility.get_prc_of_value_above_threshold(list(self.len_buffer), top_20_prc) < .5:
-                            if self.len_w < 0.9:  # hitting the max
-                                self.len_w += .0001
-                            else:
-                                self.skipped += 1
-                            if self.skipped > self.len_buffer.maxlen * 5:
-                                self.raw_len_based_reward = True
-                                self.decided_to_always_go_with_full_input_len = True
-                                self.len_w = float("inf")
-                        else:
-                            if self.len_w > 0.1:
-                                self.len_w -= .0001
-                        self.weight_total_observation += self.len_w
+        """
+        Get the reward based on the len and cost of the input generated. The len weight changes within the first
+        established tree. Moreover, if thr adjust_len_weight determines that we should use the actual len value, then
+        the weight is disregarded.
 
-            # using tdigest as found here https://github.com/CamDavidsonPilon/tdigest
-            cost_reward = self.digest.cdf(cost)  # we get the reward before we update the quantile
-            self.digest.update(cost)
-        else:
-            raise RuntimeError(f"Reward type: '{reward_type}' is neither 'quantile' nor 'smoothed'")
+        @param cost: The execution cost of the input.
+        @param input_len: The input len regardless of base used (bytes, chars, or tokens)
+        @return: The reward of the input based on the reward formula at the time of calling this method as well as the
+        other hyper-parameters values.
+        """
+
+        if self.reset_counter <= 1:  # we only adjust the reward function on the first tree
+            self.adjust_len_weight(input_len)
+
+        # using tdigest as found here https://github.com/CamDavidsonPilon/tdigest
+        cost_reward = self.digest.cdf(cost)  # we get the reward before we update the quantile
+        self.digest.update(cost)
 
         if self.raw_len_based_reward:
             return cost_reward + input_len
@@ -888,143 +912,42 @@ class MonteCarloTreeSearch:
             len_reward = Utility.scale_to_range(input_len, self.allowed_budget, 0, 0, 1)
             return (cost_reward * (1-self.len_w) * self.max_reward) + len_reward * self.len_w
 
+    def adjust_len_weight(self, input_len: int):
+        """
+        AA method to adjust the length weight according to our formula. In a nutshell, the weight is decreased or
+        increased by 0.0001 depending on whether 50% of the observed inputs are within the top 20% of the budget
+        allowance.
+        """
+        self.len_buffer.append(input_len)
+        if not self.raw_len_based_reward:  # and if we settle for raw, that's it, never going back
+            if len(self.len_buffer) == self.len_buffer.maxlen:
+                top_20_prc = int(0.8 * self.allowed_budget)
+                if Utility.get_prc_of_value_above_threshold(list(self.len_buffer), top_20_prc) < .5:
+                    if self.len_w < 0.9:  # hitting the max
+                        self.len_w += .0001
+                    else:
+                        self.skipped += 1
+                    if self.skipped > self.len_buffer.maxlen * 5:
+                        self.raw_len_based_reward = True
+                        self.decided_to_always_go_with_full_input_len = True
+                        self.len_w = float("inf")
+                else:
+                    if self.len_w > 0.1:
+                        self.len_w -= .0001
+                self.weight_total_observation += self.len_w
+
     def print_tree(self):
         """
         From the root node, print the tree found thus far.
         """
-        print(MonteCarloTreeSearch.tree_state(self.root))
+        print(Utility.tree_state(self.root))
 
     def get_tree(self) -> str:
         """
         From the root node, return the tree found thus far.
-        :return:
+        @return: A tree as a string.
         """
-        return MonteCarloTreeSearch.tree_state(self.root)
-
-    @staticmethod
-    def tree_state(node: MCTSNode) -> str:
-        """
-        Tree printing helper method.
-
-        :param node: The root node from which we would like to start the printing process.
-        """
-        indent = "    "
-        tree = ''
-        tree += f"{node.level*indent}{node}\n"
-        for child in node.get_children():
-            tree += MonteCarloTreeSearch.tree_state(child)
-        return tree
-
-    def tree_to_dot(self) -> str:
-        # open the graph and add high-level attributes
-        dot_rep = "digraph {\n"
-        dot_rep += "\tnode [shape=record, colorscheme=rdylbu11];\n"
-
-        # add graph nodes based on tree (body)
-        dot_rep += MonteCarloTreeSearch.node_to_struct(self.root, True)
-
-        # add the legend and close the whole graph
-        dot_rep += "\tsubgraph cluster_key {\n"
-        dot_rep += "\t\trank=sink;\n"
-        dot_rep += "\t\tstyle = filled;\n"
-        dot_rep += "\t\tcolor=lightgrey;\n"
-        dot_rep += "\t\tlabel=\"Legend\";\n"
-        dot_rep += "\t\tdetails [label=\"{Generated input\\n'' means empty|len(input)= length \\nof generated input|" \
-                   "# used tokens = total terminal token \\nused to generated the shown input \\nwhich must never " \
-                   "exceed the budget}|" \
-                   "SYMBOL\\nunder evaluation|" \
-                   "{AB= Allowed Budget|PB= Passed Budget|len(s)= Stack Size}|" \
-                   "STACK|" \
-                   "{V= Total Costs (sum) based on \\nany descendant of this node|N= No. of Visits|UCB= UCB value to " \
-                   "reach \\nthis node from parent}" \
-                   "}\"];\n"
-        dot_rep += "\t\tbest_intermediate [label=\"Intermediate Node in Best Path\"; style=filled; fillcolor=8]\n"
-        dot_rep += "\t\tbest_leaf [label=\"Leaf Node in Best Path\"; style=filled; fillcolor=7]\n"
-        dot_rep += "\t\tbest_terminal [label=\"Terminal Node in Best Path\"; style=filled; fontcolor=white; " \
-                   "fillcolor=9]\n"
-        dot_rep += "\t\tintermediate [label=\"Intermediate Node\"; style=filled; fillcolor=4]\n"
-        dot_rep += "\t\tleaf [label=\"Leaf Node\"; style=filled; fillcolor=5]\n"
-        dot_rep += "\t\tterminal [label=\"Terminal Node\"; style=filled; fillcolor=3]\n"
-        dot_rep += "\t}\n"
-        dot_rep += "}\n"
-
-        return dot_rep
-
-    @staticmethod
-    def node_to_struct(node: MCTSNode, is_best: bool) -> str:
-
-        if node.locked:
-            dot_struct = f"\tstruct{id(node)} [style=filled; fontcolor=white; fillcolor=black; label=\""
-        elif is_best:  # blue background
-            if node.is_terminal():
-                dot_struct = f"\tstruct{id(node)} [style=filled; fontcolor=white; fillcolor=9; label=\""
-            elif node.is_leaf():
-                dot_struct = f"\tstruct{id(node)} [style=filled; fillcolor=7; label=\""
-            else:
-                dot_struct = f"\tstruct{id(node)} [style=filled; fillcolor=8; label=\""
-        else:  # gold background
-            if node.is_terminal():
-                dot_struct = f"\tstruct{id(node)} [style=filled; fillcolor=3; label=\""
-            elif node.is_leaf():
-                dot_struct = f"\tstruct{id(node)} [style=filled; fillcolor=5; label=\""
-            else:
-                dot_struct = f"\tstruct{id(node)} [style=filled; fillcolor=4; label=\""
-
-        # input and len of input
-        # escape all characters except the ones specified below, because they could be graphviz chars.
-        dot_struct += "{'" + re.sub("([^a-zA-Z0-9])", r"\\\1", node.text) + "'| "
-        dot_struct += f" len(input): {len(node.text)}|# used tokens: {node.tokens_used}"
-        dot_struct += "}|"
-
-        # symbol in hand
-        if isinstance(node.symbol, RHSItem):
-            # escape all characters except the ones specified below
-            dot_struct += re.sub("([^a-zA-Z0-9])", r"\\\1", node.symbol.__str__()) + "|"
-        else:
-            dot_struct += f"{node.symbol}|"
-
-        # budget and stack information
-        dot_struct += "{"
-        dot_struct += f"AB: {node.allowed_budget}|PB:{node.budget}|len(s):{len(node.stack)}"
-        dot_struct += "}|"
-
-        # stack content
-        reversed_stack = node.stack[::-1]
-        dot_struct += "{"
-        if reversed_stack:
-            for item in reversed_stack:
-                # escape all characters except the ones specified below
-                dot_struct += re.sub("([^a-zA-Z0-9])", r"\\\1", item.__str__()) + "|"
-            dot_struct = dot_struct[:-1]  # removing the last char "|" in the string.
-        else:
-            dot_struct += f"EMPTY\\nSTACK"
-        dot_struct += "}|"
-
-        # MCTS information (V, N, UCB)
-        dot_struct += "{"
-        dot_struct += f"V: {node.get_total_cost()}|N: {node.get_visits()}| UCB1: {node.get_ucb1()}"
-        dot_struct += "}\"];\n"
-
-        if node.get_children() and is_best:  # if it has children and it is in the best path, then get the max child
-            max_child = max(node.get_children(), key=lambda n: n.get_ucb1())
-            max_ucb = max_child.get_ucb1()  # get the best child ucb1 value for coloring
-        else:
-            max_ucb = -1.0
-
-        for child in node.get_children():
-            if child.get_ucb1() == max_ucb:
-                dot_struct += MonteCarloTreeSearch.node_to_struct(child, True)
-            else:
-                dot_struct += MonteCarloTreeSearch.node_to_struct(child, False)
-            dot_struct += f"\tstruct{id(node)} -> struct{id(child)} "
-            c = Utility.scale_to_range(child.level, 181, 0, 1, 2)
-            if child.get_ucb1() == float("inf") or child.get_ucb1() == float("-inf"):
-                dot_struct += f"[taillabel=\"C={round(c, 2)}, UCB={round(child.get_ucb1(), 4)}, " \
-                              f"level={child.level}\"; penwidth={0.5}];\n"
-            else:
-                dot_struct += f"[taillabel=\"C={round(c, 2)}, UCB={round(child.get_ucb1(), 4)}, " \
-                              f"level={child.level}\"; penwidth={round(child.get_ucb1(), 4)}];\n"
-        return dot_struct
+        return Utility.tree_state(self.root)
 
     def simulate(self):
         """
@@ -1071,7 +994,7 @@ class MonteCarloTreeSearch:
         if is_anomalous:
             self.count_of_anomalous_runs += 1
 
-        # track reportable values before exiting
+        # track reportable values before exiting. TODO: we don't need these. If anything they should be a method call.
         self.report_dict['final max depth'] = str(deepness)
         self.report_dict['reached terminal?'] = str(reached_terminal)
         self.report_dict['final input'] = str(final_input.encode())
@@ -1081,6 +1004,10 @@ class MonteCarloTreeSearch:
                                                                 self.hundredth_upper_bound, 0))
 
     def get_report(self) -> dict:
+        """
+
+        @return:
+        """
         # make sure we get the latest info about anomalous runs before returning the report.
         self.report_dict['Progress: anam - observed anomalous value?'] = str(self.count_of_anomalous_runs > 0)
         self.report_dict['Progress: anam - # of anomalous value'] = str(self.count_of_anomalous_runs)
@@ -1088,32 +1015,17 @@ class MonteCarloTreeSearch:
         return self.report_dict
 
     def close_connection(self):
+        """
+        Close the connection to the AFL runner.
+        """
         self.original_root.close_connection()
 
     def has_stabilized(self, uniqueness_prc: float) -> bool:
         """
-        :param uniqueness_prc:
-        :return:
+        Evaluate whether the tree has stabilized based on the number of execution  made using the tree and the
+        uniqueness percentage value.
+        @param uniqueness_prc: The uniqueness percentage (e.g., 0.5 is 50%).
+        @return: True if it stabilized and False otherwise.
         """
+        # TODO: This can be a staticmethod.
         return True if uniqueness_prc < (1 - self.epsilon.get_exploration_rate(self.exec_since_last_reset)) else False
-
-    @staticmethod
-    def find_prc_uniq_values(data: List[int]) -> float:
-        """
-        A function to calculate the percentage of of duplicate value in a list.
-
-        :param data: a list of numbers.
-        :return:  The percentage of unique value
-        """
-        if data:
-            return len(np.unique(data)) / len(data)
-        else:
-            return 0.0  # special case
-
-    @staticmethod
-    def find_prc_of_val_greater_than(data: List[int], k: int) -> float:
-        if data:
-            x = sum(i >= k for i in data)  # num of values larger than or equal to k
-            return x/len(data)
-        else:
-            return 0.0
