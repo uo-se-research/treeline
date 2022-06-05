@@ -1,0 +1,7 @@
+pandas
+sympy
+psutil
+graphviz
+tdigest
+sphinx
+sphinx_rtd_theme
