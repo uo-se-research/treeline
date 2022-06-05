@@ -5,7 +5,6 @@ __status__ = "Testing"
 import os
 import csv
 import argparse
-import logging
 from datetime import datetime
 
 from gramm.llparse import *
@@ -79,7 +78,7 @@ if __name__ == "__main__":
 
     # build mcts obj and run a search
     mcst = MonteCarloTreeSearch(gram, budget=args.b)
-    mcst.warm_up()
+    mcst.dry_run()
     mcst.search(num_iter=args.iter)
 
     # if true, run a simulation of the best path

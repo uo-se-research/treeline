@@ -8,10 +8,10 @@ logger = logging.getLogger("SlackMessages")
 """
 Login to the slack account and find the settings under "Incoming Webhooks". The POST URL should be in a 
 credentials.ini file under a section named "DEFAULT".
- - go to https://api.slack.com/apps.
- - click on your app name or create  anew one.
- - navigate to "Incoming Webhooks".
- - copy the "Webhook URL" to the credentials.ini file with the key "SLACK".
+    - go to https://api.slack.com/apps.
+    - click on your app name or create  anew one.
+    - navigate to "Incoming Webhooks".
+    - copy the "Webhook URL" to the credentials.ini file with the key "SLACK".
 """
 config = configparser.ConfigParser()
 try:

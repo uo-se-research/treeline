@@ -8,11 +8,11 @@ from datetime import datetime
 import graphviz
 
 import slack
+import helpers as helper
 from gramm.llparse import *
 from gramm.grammar import FactorEmpty
 import mcts.mcts_globals as mg  # MCTS globals
 from mcts.mcts import MonteCarloTreeSearch
-
 
 if __name__ == "__main__":
 
@@ -27,13 +27,13 @@ if __name__ == "__main__":
     ]
 
     # libxml2
-    # gram_file = [
-        # "../target_apps/libxml2/grammars/gram-libxml2-free-typing.txt",
+    # gram_file =[
+    #     "../target_apps/libxml2/grammars/gram-libxml2-free-typing.txt",
     # ]
 
     # graphviz
     # gram_file = [
-        # "../target_apps/graphviz/grammars/parser-based.txt",
+    #     "../target_apps/graphviz/grammars/parser-based.txt",
     # ]
 
     # flex
@@ -41,14 +41,13 @@ if __name__ == "__main__":
     #     "../target_apps/flex/grammars/flex.gram",
     # ]
 
-    app_name = "wf"  # graphviz, wf, dc, libxml2, quicksort, insertionsort, sqlite
+    app_name = "wf"  # graphviz, wf, dc, libxml2, quicksort, insertion_sort, sqlite
     expr_desc = "fse"  # DO NOT USE "-" to separate words
-    number_of_repetitions = 20  # how many times should we repeat a given experiment configuration?
+    number_of_repetitions = 1  # how many times should we repeat a given experiment configuration?
     save_tree_as_binary = False  # save the  tree as a binary in a .tree file in case we want to load it again
     write_tree_to_file_as_text = False  # print the tree as text to txt file?
     generate_tree_vis = False  # generate a tree vis as PDF?
     log_to_file = True  # should we log to file or stream
-    track_everything = False  # whether we want to track all data or very minimal pieces.
     report_to_slack = False  # only official runs should report to slack
 
     # combination of parameter to run
@@ -56,11 +55,10 @@ if __name__ == "__main__":
         c=[1.5],  # exploration
         e=[20],  # visits before expansion
         budget=[60],  # budget allowed for an input
-        is_time_based=[True],  # are running based on time or iterations?
+        is_time_based=[False],  # are running based on time or iterations?
         time_cap_in_h=[1],  # if based on time, how long in hours are we allowed to run?
-        num_iter=[100000],  # if based on iterations, what is the number of search iteration planned?
+        num_iter=[50],  # if based on iterations, what is the number of search iteration planned?
         reward_type=['quantile'],  # 'prc', 'smoothed', 'log', 'binary', 'quantile'
-        hundredth_upper_bound=[100],
         grams=gram_file,
         algorithm=['lcc'],  # 'mcts', 'leaf-pruning-mcts', 'root-pruning-mcts', 'coverage-based-mcts', 'lcc', 'lcc-conv'
         use_locking=[True],
@@ -76,7 +74,7 @@ if __name__ == "__main__":
         logging.root.removeHandler(handler)
     # in some cases the logging level will change to DEBUG based on what happens in search, but in general this is the
     # logging level we want
-    logging_level = logging.DEBUG
+    logging_level = logging.WARNING
     logging.root.setLevel(logging_level)
     logging_format = logging.Formatter('%(asctime)s: %(levelname)s [%(name)s:%(funcName)s:%(lineno)d] - %(message)s')
 
@@ -85,14 +83,12 @@ if __name__ == "__main__":
     cpu_cores = psutil.cpu_count()
     hosting_os = platform.platform()
 
-    mg.extensive_data_tracking = track_everything
-
     params = [v for v in mutable_param.values()]
 
     number_of_experiments = sum(1 for e in product(*params))  # count number of comp
     comp = 0
     print(f"We have {number_of_experiments} experiment configuration to run!")
-    for c, e, budget, is_time_based, time_cap_in_h, num_iter, reward_type, hundredth_upper_bound, gram_used, alg,\
+    for c, e, budget, is_time_based, time_cap_in_h, num_iter, reward_type, gram_used, alg,\
             locking, bias, max_reward, tail_len, max_cutting_threshold, threshold_decay_rate in product(*params):
         comp += 1
         gram_base_file_name = os.path.basename(gram_used)
@@ -102,7 +98,7 @@ if __name__ == "__main__":
             print("====================================================")
             exper_info = f"Experiment Info:\n ```\ngram={gram_base_file_name}, algorithm={alg}, c={c}, e={e}, " \
                          f"locking={locking}, bias={bias}, budget={budget}, reward-type={reward_type}, " \
-                         f"reward-max={max_reward}, hundredth-upper-bound={hundredth_upper_bound}, " \
+                         f"reward-max={max_reward}, " \
                          f"tail-len={tail_len}, max-cutting-threshold={max_cutting_threshold}," \
                          f"threshold-decay-rate={threshold_decay_rate:f}, time-based?={is_time_based}, " \
                          f"time-cap-h={time_cap_in_h} iter={num_iter}\n```"
@@ -128,7 +124,7 @@ if __name__ == "__main__":
                               f"gram:{gram_base_file_name.replace('-', '_')}-c:{mg.C}-e:{mg.E}-" \
                               f"BDG:{budget}-rType:{reward_type}-rMax:{max_reward}-bias:{bias_ind}-" \
                               f"tail:{tail_len}-unqMax:{max_cutting_threshold}-unqGrwRate:{threshold_decay_rate:f}-" \
-                              f"lock:{locking_ind}-hup:{hundredth_upper_bound}-DUR:{duration_info}-" \
+                              f"lock:{locking_ind}-DUR:{duration_info}-" \
                               f"date:{date.replace('/', '')}-time:{time.replace(':','')}"
             output_dir = f"{log_dir}{expr_identifier}/"
             os.makedirs(output_dir)
@@ -162,20 +158,18 @@ if __name__ == "__main__":
                                         expr_id=expr_identifier,
                                         budget=budget,
                                         reward_type=reward_type,
-                                        hundredth_upper_bound=hundredth_upper_bound,
                                         use_locking=locking,
                                         use_bias=bias,
-                                        max_reward=max_reward,
                                         tail_len=tail_len,
                                         max_threshold=max_cutting_threshold,
                                         threshold_decay=threshold_decay_rate)
 
-            if not mcts.warm_up():  # skip any experiment we cannot warmup for within allowed time.
+            if not mcts.dry_run():  # skip any experiment we cannot warmup for within allowed time.
                 continue
 
             # use the specified algorithm to do the search
             if alg == 'lcc':
-                mcts.lcc(is_time_based, time_cap_h=time_cap_in_h, num_iter=num_iter)
+                mcts.treeline(is_time_based, time_cap_h=time_cap_in_h, num_iter=num_iter)
             elif alg == 'random':
                 mcts.random_search(is_time_based, time_cap_h=time_cap_in_h, num_iter=num_iter)
             else:
@@ -197,24 +191,23 @@ if __name__ == "__main__":
 
             if generate_tree_vis:
                 print("Rendering the tree based on dot file ...")
-                g = graphviz.Source(mcts.tree_to_dot())
+                g = graphviz.Source(helper.tree_to_dot(mcts.root))
                 g.render(filename=f"{output_dir}TreeVis", format="pdf", cleanup=True)
 
             # getting dict report and adding high-level info (e.g. date, gram file, etc).
             report = mcts.get_report()
-            report['Time: date'] = str(date)
-            report['Time: time'] = str(time)
+            report['Period: Run date-time'] = str(date) + "-" + str(time)
             report['Config: grammar file'] = str(gram_base_file_name)
             report['Env: available mem'] = str(available_mem)
             report['Env: cpu cores'] = str(cpu_cores)
             report['Env: os'] = str(hosting_os)
-            report['Config: target-app'] = app_name
-            report['Config: expr-description'] = expr_desc
-            report['Config: search-algorithm'] = alg
+            report['Config: Target App'] = app_name   # TODO: can we get this from the runner itsefl?
+            report['Config: Expr Description'] = expr_desc  # TODO: do we need it?
+            report['Config: Search Algorithm'] = alg
 
             # logging high-level info for this experiment in the target app file
             print("Logging high-level info of this target app ...")
-            print(f"Max cost observed: {report['Results: max cost']}")
+            print(f"Max cost observed: {report['Results: Max Observed Cost']}")
             report_file = f"{log_dir}experiments-info-{app_name}.csv"
             if os.path.exists(report_file):
                 with open(report_file, "a") as e_file:
@@ -230,12 +223,11 @@ if __name__ == "__main__":
                     writer.writerow(values)
 
             # write final stats to file
-            stats_summery = ""
             print("Write high-level stats to file ...")
-            with open(f"{output_dir}expr-stats.txt", "w") as report_file:
-                for k, v in sorted(report.items()):
-                    report_file.write(f"{k}= {v}\n")
-                    stats_summery += f"{k}= {v}\n"
+            with open(f"{output_dir}config-and-stats-report.txt", "w") as report_file:
+                stats_summery = helper.beautify_final_report(report)
+                report_file.write(stats_summery)
+
             if report_to_slack:
                 slack.post_message_to_slack(f"Experiment Ended (it started at {date}, {time}). "
                                             f"Here are some stats:\n\n```\n{stats_summery}\n```\n")

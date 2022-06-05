@@ -18,31 +18,34 @@ if not input_handler.is_connected():
 
 
 class MCTSNode:
+    """The object of the search tree. The initialization of each new node will fall into three possible cases.
+
+        #. An empty stack:
+            In which case it would lead to a terminal node. In such case we don't want to pop from an empty
+            stack, and we need to ensure that the symbol=None, so we can determine this node as terminal (in MCTS def.).
+        #. Non-terminal at top of stack:
+            This is the simplest case where we just pop that element and use it as the symbol. Any Non-terminal must
+            have some options (even if a single option) only in such cases we want to create MCTSNodes.
+        #. Terminal node at top of stack:
+            This is possible when the parent of this node had a choice that contains a sequence of terminals, or a mix
+            of both terminals and non-terminal (e.g. <A> ::= 'a' <B> 'c' | 'a' 'b' 'c'). When we encounter a terminal
+            at the top of the stack, we want to make sure we adjust the values of used tokens and the generated text
+            properly. Then throw the terminal element. Terminals (_Literal) are choice-less elements, we do not want
+            to create MCTSNode for them as it is a waste of resources (both in terms of space and time).
+
+    :param budget: The budget allowed based on the defined input length (e.g., num of char, tokens or bytes).
+    :param text: The literals generated to the so far (i.e., to the left of the current “cursor”).
+    :param stack: Tokens need to be resolved as given by the choice from the parent node.
+    :param tokens: The number of tokens used as of parent node.
+    :param parent: This node's parent.
+    :param use_locking: If True: any node that is exhausted will be locked from future visits
+        (i.e., as if it doesn't exist anymore).
+    :param bias: A reference to the bias object regardless if we use bias or not.
+    """
 
     def __init__(self, budget, text: str, stack: List[RHSItem], tokens, parent: "MCTSNode" = None,
                  use_locking: bool = False, bias: Bias = None):
-        """
-        The object of the search tree. The initialization of each new node will fall into three possible cases.
-        1. An empty stack: in which it would lead to a terminal node. In such case we don't want to pop from an empty
-            stack, and we need to ensure that the symbol=None, so we can determine this node as terminal (in MCTS def.).
-        2. Non-terminal at top of stack: this is the simplest case where we just pop that element and use it as the
-            symbol. Any Non-terminal must have some options (even if a single option) only in such cases we want to
-            create MCTSNodes.
-        3. Terminal node at top of stack: This is possible when the parent of this node had a choice that contains a
-            sequence of terminals, or a mix of both terminals and non-terminal (e.g. <A> ::= 'a' <B> 'c' | 'a' 'b' 'c').
-            When we encounter a terminal at the top of the stack, we want to make sure we adjust the values of used
-            tokens and the generated text properly. Then throw the terminal element. Terminals (_Literal) are
-            choice-less elements, we do not want to create MCTSNode for them as it is a waste of resources (both in
-            terms of space and time).
-
-        @param budget: The budget allowed based on the defined input length (e.g., num of char, tokens or bytes).
-        @param text: The literals generated to the so far (i.e., to the left of the current “cursor”).
-        @param stack: Tokens need to be resolved as given by the choice from the parent node.
-        @param tokens: The number of tokens used as of parent node.
-        @param parent: This node's parent.
-        @param use_locking: If True: any node that is exhausted will be locked from future visits
-            (i.e., as if it doesn't exist anymore).
-        @parma bias: A reference to the bias object regardless if we use bias or not.
+        """Constructor method
         """
         self.log = logging.getLogger(self.__class__.__name__)
 
@@ -103,9 +106,9 @@ class MCTSNode:
             self.allowed_budget = self.budget + self.symbol.min_tokens()  # either parent or any other node
 
     def update(self, new_cost):
-        """
-        Update this node given an observed cost based on it or based on a descendant from it.
-        @param new_cost: the cost observed.
+        """Update this node given an observed cost based on it or based on a descendant from it.
+
+        :param new_cost: the cost observed.
         """
         self._v += new_cost
         self._n += 1
@@ -120,8 +123,7 @@ class MCTSNode:
                 self.locked = should_lock_it
 
     def populate_children(self):
-        """
-        Create all valid children from this node and add them to its list of children.
+        """Create all valid children from this node and add them to its list of children.
         """
         assert not self.is_terminal()
         gram_children = self._get_gram_valid_children()  # get all options (empty=None, otherwise list of choices)
@@ -130,10 +132,9 @@ class MCTSNode:
             self._children.append(self._populate_child_node(child))
 
     def _get_gram_valid_children(self) -> List[RHSItem]:
-        """
-        Provides a list of Valid choices from this node given the allows budget.
+        """Provides a list of Valid choices from this node given the allows budget.
 
-        @return: List[RHSItem] of valid children (e.g. [_Symbol('<word>'), _Symbol('<char>')]).
+        :return: List[RHSItem] of valid children (e.g. [_Symbol('<word>'), _Symbol('<char>')]).
         """
         if isinstance(self.symbol, _Symbol):
             if isinstance(self.symbol.choices(self.allowed_budget)[0], _Choice):
@@ -151,15 +152,14 @@ class MCTSNode:
             return self.symbol.choices(self.allowed_budget)
 
     def _populate_child_node(self, child: RHSItem) -> "MCTSNode":
-        """
-        Given a valid grammar node option (child) create the MCTSNode appropriately then return it.
+        """Given a valid grammar node option (child) create the MCTSNode appropriately then return it.
 
-        Note that this method does NOT add a child to this current node. It only populates a child that can be added
-        to its children (in a case where we expand it) or just creating one for random expansion (in a case
-        of a rollout).
+        :Note: This method does NOT add a child to this current node. It only populates a child that can be added
+            to its children (in a case where we expand it) or just creating one for random expansion (in a case
+            of a rollout).
 
-        @param child: A child is a valid grammar option (action) from this node.
-        @return: A new MCTSNode with the appropriate options (budget, token, text, etc) adjusted.
+        :param child: A child is a valid grammar option (action) from this node.
+        :return: A new MCTSNode with the appropriate options (budget, token, text, etc) adjusted.
         """
 
         if isinstance(child, _Literal):
@@ -196,10 +196,10 @@ class MCTSNode:
                         use_locking=self.use_locking)
 
     def select_random_child(self, using_bias=False) -> "MCTSNode":
-        """
-        From the valid children of this node, select one randomly and return it as an MCTSNode.
+        """From the valid children of this node, select one randomly and return it as an MCTSNode.
 
-        @return: a random valid child as MCTSNode
+        :param using_bias: If True the child selection will use the bias table. Otherwise, it will be random.
+        :return: a random valid child as MCTSNode
         """
         choices = self._get_gram_valid_children()  # get all options
         if using_bias:
@@ -207,19 +207,13 @@ class MCTSNode:
         else:
             choice = random.choice(choices)  # randomly select one
 
-        # self.log.debug("Choices:")
-        # for idx, c, in enumerate(choices):
-        #     self.log.debug(f"\t{idx + 1}: {c}")
-        # self.log.debug(f"Chosen: {choice}")
-
         return self._populate_child_node(choice)
 
     def get_ucb1(self) -> float:
-        """
-        Upper Confidence Bounds or UCB1 for this node. If root the value will be 0. If a node is locked then the UCB
+        """Upper Confidence Bounds or UCB1 for this node. If root the value will be 0. If a node is locked then the UCB
         value will be negative infinity so that it doesn't get selected ever.
 
-        @return: float value of representing the UCB of this node.
+        :return: float value of representing the UCB of this node.
         """
         if self.parent is None:  # i.e., if this is the root
             return 0.0
@@ -241,18 +235,17 @@ class MCTSNode:
             return self._v / self._n + mg.C * math.sqrt(math.log(self.parent._n) / self._n)
 
     def run(self, warmup: bool = False) -> Tuple[str, int, int, bool, int, bool]:
-        """
-        A method to run the app given the input from this node. This must only be called on terminal nodes. It returns
-        all the possible information it can collect from a run. It is up to the method that call this one to decide on
-        what information to pass to the requester of a run.
+        """A method to run the app given the input from this node. This must only be called on terminal nodes. It
+        returns all the possible information it can collect from a run. It is up to the method that call this one to
+        decide on what information to pass to the requester of a run.
 
-        @param warmup: what should be the run type. A warmup run, which is the less often one should always send the
-        signal 'wup' to avoid missing the max_count on AFL side. Any three characters '***' would lead to a run that
-        update max_count (if there was one) on AFL side.
-        @return: A tuple of (input:str, total-execution-cost:int, hnb:int, hnm:bool, hs:int, anomalous_run:bool).
-        hnb (coverage) is either 0 (no change), 1 (an edge has new change in hit count), or 2 (an edge got hit for the
-        first time). hnm is True iff there was an increase on the hit for some edge given the past observations. And
-        hs is the number of edge hit for the edge that got hit the most.
+        :param warmup: what should be the run type. A warmup run, which is the less often one should always send the
+            signal 'wup' to avoid missing the max_count on AFL side. Any three characters '***' would lead to a run that
+            update max_count (if there was one) on AFL side.
+        :return: A tuple of (input:str, total-execution-cost:int, hnb:int, hnm:bool, hs:int, anomalous_run:bool).
+            hnb (coverage) is either 0 (no change), 1 (an edge has new change in hit count), or 2 (an edge got hit for
+            the first time). hnm is True iff there was an increase on the hit for some edge given the past observations.
+            And hs is the number of edge hit for the edge that got hit the most.
         """
         run_type = 'nml'
         if warmup:
@@ -281,7 +274,8 @@ class MCTSNode:
         """
         A none official app runner that can only be used on the root node. This dummy runner is only useful in
         establishing some basics about the application possible call graph cost.
-        @return: Same tuple of the official runs (see the "run" method for detailed information).
+
+        :return: Same tuple of the official runs (see the "run" method for detailed information).
         """
         run_type = 'wup'
         if self.parent is not None:
@@ -300,21 +294,24 @@ class MCTSNode:
     def get_visits(self) -> int:
         """
         The number of visits to this node so far.
-        @return: The number of visits.
+
+        :return: The number of visits.
         """
         return self._n
 
     def get_total_cost(self) -> float:
         """
         The accumulative cost seen so for from this node.
-        @return: duh
+
+        :return: duh
         """
         return self._v
 
     def get_allowed_budget(self) -> int:
         """
         The allowed budget from this node given the context to that lead to this current state.
-        @return:
+
+        :return:
         """
         return self.allowed_budget
 
@@ -341,7 +338,7 @@ class MCTSNode:
         """
         Create a signature of this node given the text generated so far, its symbol, and what symbols are still in
         the stack.
-        @return: The node signature as string "<text>-<symbol>-[<stack>]"
+        :return: The node signature as string "<text>-<symbol>-[<stack>]"
         """
         reversed_stack = self.stack[::-1]
         simplified_stack = ""
@@ -352,7 +349,7 @@ class MCTSNode:
     def get_children(self) -> List["MCTSNode"]:
         """
         Get all the populated children.
-        @return: A list of the populated children.
+        :return: A list of the populated children.
         """
         return self._children
 
@@ -360,14 +357,14 @@ class MCTSNode:
         """
         The number of populated children. These must always be either 0 (not populated yet) or equal to all the valid
         children as we populate children at once.
-        @return: duh
+        :return: duh
         """
         return len(self._children)
 
     def is_new(self) -> bool:
         """
         A node is new if it was visited less than then the expansion threshold (E).
-        @return: bool of whether it is new or not.
+        :return: bool of whether it is new or not.
         """
         return self._n < mg.E
 
@@ -375,7 +372,7 @@ class MCTSNode:
         """
         Unlike terminal gram symbols, a terminal MCTSNode is also the last terminal symbol in the stack. Otherwise, it
         is only a terminal symbol that has one possible action.
-        @return: True (if stack is empty and symbol is None), and False otherwise.
+        :return: True (if stack is empty and symbol is None), and False otherwise.
         """
         return not self.stack and self.symbol is None
 
@@ -383,7 +380,7 @@ class MCTSNode:
         """
         A leaf is a node that has no children yet. A leaf node is not necessarily a terminal node!
 
-        @return: True if it has no children, False otherwise.
+        :return: True if it has no children, False otherwise.
         """
         return not self._children
 
@@ -391,51 +388,56 @@ class MCTSNode:
         """
         If the input from this new or any of its descendants demonstrate a run that the edge has-new-bits or has-new-max
         then return True.
-        @return: Return true if this node uncovered new bits or new max.
+        :return: Return true if this node uncovered new bits or new max.
         """
         return self._hnb or self._hnm
 
     def get_hnb(self) -> int:
         """
         Get the value of has-new-bits (hnb or coverage).
-        @return: Coverage is either 0 (no change), 1 (an edge has new change in hit count), or 2 (an edge got hit for
+        :return: Coverage is either 0 (no change), 1 (an edge has new change in hit count), or 2 (an edge got hit for
         the first time).
         """
         return self._hnb
 
     def set_hnb(self, hnb: int):
         """
-        Set the value of has-new-bits (hnb or coverage)
-        @param hnb: Coverage is either 0 (no change), 1 (an edge has new change in hit count), or 2 (an edge got hit
-        for the first time).
+        Set the value of has-new-bits (hnb or coverage).
+
+        :param hnb: Coverage is either 0 (no change), 1 (an edge has new change in hit count), or 2 (an edge got hit
+            for the first time).
         """
         self._hnb = hnb
 
     def get_hnm(self) -> bool:
         """
         Get the value of has-new-max (hnm).
-        @return: hnm is True iff there was an increase on the hit for some edge given the past observations.
+
+        :return: hnm is True iff there was an increase on the hit for some edge given the past observations.
         """
         return self._hnm
 
     def set_hnm(self, hnm: bool):
         """
         Get the value of has-new-max (hnm).
-        @param hnm: has-new-max is True iff there was an increase on the hit for some edge given the past observations.
+
+        :param hnm: has-new-max is True iff there was an increase on the hit for some edge given the past observations.
         """
         self._hnm = hnm
 
     def get_hotspot(self) -> int:
         """
         Get the value of hotspot (hs).
-        @return: hs is the number of edge hit for the edge that got hit the most.
+
+        :return: hs is the number of edge hit for the edge that got hit the most.
         """
         return self._hs
 
     def set_hotspot(self, hs: int):
         """
         Set the value of hotspot (hs).
-        @param hs: hotspot is the number of edge hit for the edge that got hit the most.
+
+        :param hs: hotspot is the number of edge hit for the edge that got hit the most.
         """
         self._hs = hs
 
@@ -443,7 +445,7 @@ class MCTSNode:
         """
         Whether this is a root node or not.
 
-        @return: True if root, false otherwise.
+        :return: True if root, false otherwise.
         """
         return self.parent is not None
 

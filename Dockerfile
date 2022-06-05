@@ -7,7 +7,7 @@ COPY resources/sources.list /etc/apt/
 
 # all packages needed by all perffuzz glade, or us.
 RUN apt-get update
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get install -y --no-install-recommends --fix-missing \
 	build-essential \
 	make \
 	cmake \
@@ -17,7 +17,6 @@ RUN apt-get install -y --no-install-recommends \
 	cpio \
 	vim \
 	wget \
-	libssl-dev \
 	libssl-dev \
 	libbz2-dev \
 	libreadline-dev \
@@ -29,7 +28,7 @@ RUN apt-get install -y --no-install-recommends \
 	zlib1g-dev \
 	libffi-dev \
 	tk-dev \
-	ca-certificates \ 
+	ca-certificates \
 	libjpeg-dev \
 	libpng-dev && \
 	rm -rf /var/lib/apt/lists/*
@@ -41,17 +40,19 @@ RUN apt-get install -y --no-install-recommends \
     texinfo \
     help2man
 
-# installing python3.8.11
+# installing python3.9.13
 WORKDIR /opt
-RUN wget https://www.python.org/ftp/python/3.8.11/Python-3.8.11.tgz
-# --no-check-certificate
-RUN tar xzf Python-3.8.11.tgz
-RUN rm Python-3.8.11.tgz
-WORKDIR /opt/Python-3.8.11
+RUN wget https://www.python.org/ftp/python/3.9.13/Python-3.9.13.tgz
+RUN tar xzf Python-3.9.13.tgz
+RUN rm Python-3.9.13.tgz
+WORKDIR /opt/Python-3.9.13
 RUN ./configure --enable-optimizations --enable-shared
-RUN make altinstall
+RUN make
+RUN make install
+RUN ln -sf /usr/local/bin/python3.9 /usr/local/bin/python3
+RUN ln -sf /usr/local/bin/pip3.9 /usr/local/bin/pip3
 
-# special case for installing clang
+# installing clang
 RUN apt-get update
 RUN apt-get install -y clang-3.8
 
@@ -87,7 +88,8 @@ WORKDIR /home/git/perffuzz/
 RUN make afl-showmax
 
 # Use our file before the build, the files we copy are edited versions of PerfFuzz to work with TreeLine
-COPY resources/afl-fuzz.c .
+COPY resources/afl-treeline.c .
+COPY resources/Makefile .
 COPY resources/afl-showmax.c .
 RUN make clean all  # build edited PerfFuzz
 RUN make afl-showmax  # build the edited analysis file.
@@ -99,30 +101,20 @@ WORKDIR /home
 RUN mkdir treeline
 WORKDIR /home/treeline
 COPY src ./src
+COPY docs ./docs
 
-# Install conda and all the other project dependecies in python
-RUN curl -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh  && \
-	chmod +x ~/miniconda.sh && \
-	~/miniconda.sh -b -p /opt/conda && \
-	rm ~/miniconda.sh && \
-	/opt/conda/bin/conda clean -ya
-
-ENV PATH $PATH:/home/git/perffuzz/:/opt/conda/bin
-
-RUN conda install -c conda-forge matplotlib
-RUN pip install --upgrade pip
+# update the PATH
+ENV PATH $PATH:/home/git/perffuzz/
 
 # install python packages
-RUN pip install pandas
-RUN pip install sympy
-RUN pip install psutil
-RUN pip install graphviz
-RUN pip install tdigest
+WORKDIR /home/packages
+COPY resources/requirements.txt .
+RUN pip3 install -r requirements.txt
 
 # copy the target apps dir and build all the apps with AFL instrumenter
-COPY target_apps ./target_apps
+COPY target_apps /home/treeline/target_apps
 
-# build all target apps
+# build all target apps (this will take a while)
 WORKDIR /home/treeline/target_apps
 RUN sh build_targets.sh
 
@@ -132,7 +124,6 @@ RUN mkdir /home/results
 # change the workdir to /home for convenience
 WORKDIR /home
 
-# ports we are exposing (6006: tensorboard, 2300: AFL socket)
-# this is requiered only in case one would like to run TreeLine from a local machine while PerfFuzz (AFL) is running
-# on this docker container.
-EXPOSE 6006 2300
+# ports we are exposing (2300: AFL socket). This is requiered only in case one would like to run TreeLine from a local
+# machine while the targer-app runerer (AFL) is running on this docker container.
+EXPOSE 2300

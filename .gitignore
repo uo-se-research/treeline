@@ -11,7 +11,8 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
-build/
+docs/build/
+docs/*.rst
 develop-eggs/
 dist/
 downloads/

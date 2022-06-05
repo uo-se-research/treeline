@@ -2,8 +2,8 @@ import os
 import argparse
 from collections import defaultdict
 
+import helpers as helper
 from analysis.run_app import AppRunner
-from utilities import Utility
 
 
 if __name__ == "__main__":
@@ -38,8 +38,8 @@ if __name__ == "__main__":
         raise RuntimeError(f"Could not find queue/buffer dir in {args.dir} or any of its sub-directories.")
 
     # Copy inputs into new dirs and files with fixed names without losing important information
-    Utility.prep_expr_for_showmax(args.dir, expr_dir)
-    expr_dir = Utility.get_expr_dirs(args.dir)
+    helper.prep_expr_for_showmax(args.dir, expr_dir)
+    expr_dir = helper.get_expr_dirs(args.dir)
 
     for expr in expr_dir:
 
@@ -83,5 +83,5 @@ if __name__ == "__main__":
                 raise \
                     RuntimeError(f'The key {k}, has {len(v)} items that does not match the base size {base_array_size}')
 
-        Utility.write_dict_to_csv(report, output_dir=f'{args.dir}', file_name=f'{expr_info}')
-        # TODO: remove all the expr dirs we just created.
+        helper.write_dict_to_csv(report, output_dir=f'{args.dir}', file_name=f'{expr_info}')
+        # FIXME: remove all the expr dirs we just created.
