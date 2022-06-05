@@ -36,14 +36,14 @@ Thus, 279 + 115 = 394 SLoC.
 ## Manually Build the Source Code
 
 After decompressing the file
-```commandline
+```bash
 rpm2cpio wf-0.41-alt1.qa1.src.rpm | cpio -idmv
 tar -xvf wf-0.41.tar
 ```
 From within the new source directory `wf-0.41`, use AFL's compiler to 
 generate the appropriate Makefile.
 
-```commandline
+```bash
 CC=/home/git/perffuzz/afl-clang-fast ./configure
 ```
 
@@ -65,6 +65,6 @@ dummy seed input for perffuzz
 
 To manually run the AFL listener on the target application you use a command similar to the one below.
 
-```commandline
-afl-fuzz -i /home/treeline/target_apps/word-frequency/inputs/ -o /home/results/wf-001 -p -N 60 -d /home/treeline/target_apps/word-frequency/src/wf-0.41/src/wf
+```bash
+afl-treeline -i /home/treeline/target_apps/word-frequency/inputs/ -o /home/results/wf-001 -p -N 60 -d /home/treeline/target_apps/word-frequency/src/wf-0.41/src/wf
 ```

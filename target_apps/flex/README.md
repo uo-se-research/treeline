@@ -72,7 +72,6 @@ username    printf( "%s", getlogin() );
 
 To manually run the AFL listener on the target application you use a command similar to the one below.
 
-```commandline
-afl-fuzz -i /home/treeline/target_apps/flex/inputs/ -o /home/results/flex-test -p -N 60 -d /home/treeline/target_apps/flex/src/flex-2.6.4/src/flex
+```bash
+afl-treeline -i /home/treeline/target_apps/flex/inputs/ -o /home/results/flex-test -p -N 60 -d /home/treeline/target_apps/flex/src/flex-2.6.4/src/flex
 ```
-

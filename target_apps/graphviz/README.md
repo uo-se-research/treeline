@@ -134,7 +134,7 @@ digraph G {
 
 To render the graph you could try the following: 
 
-```commandline
+```bash
 dot -Tps sample.dot -o sample.ps
 ```
 
@@ -142,6 +142,6 @@ dot -Tps sample.dot -o sample.ps
 
 To manually run the AFL listener on the target application you use a command similar to the one below.
 
-```commandline
-afl-fuzz -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot
+```bash
+afl-treeline -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot
 ```
