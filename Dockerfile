@@ -77,20 +77,11 @@ RUN git clone https://github.com/carolemieux/perffuzz.git
 WORKDIR /home/git/perffuzz/
 RUN git reset --hard f937f370555d0c54f2109e3b1aa5763f8defe337
 
-# compile origirnal fuzzer
-WORKDIR /home/git/perffuzz/
-RUN make
-# compile instrumentor
-WORKDIR /home/git/perffuzz/llvm_mode/
-RUN make
-# compile analyzer
-WORKDIR /home/git/perffuzz/
-RUN make afl-showmax
-
 # Use our file before the build, the files we copy are edited versions of PerfFuzz to work with TreeLine
 COPY resources/afl-treeline.c .
 COPY resources/Makefile .
 COPY resources/afl-showmax.c .
+COPY resources/afl-perffuzz.c ./afl-fuzz.c
 RUN make clean all  # build edited PerfFuzz
 RUN make afl-showmax  # build the edited analysis file.
 WORKDIR /home/git/perffuzz/llvm_mode/
