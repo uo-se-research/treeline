@@ -42,7 +42,7 @@ if __name__ == "__main__":
     # ]
 
     app_name = "wf"  # graphviz, wf, dc, libxml2, quicksort, insertion_sort, sqlite
-    expr_desc = "fse"  # DO NOT USE "-" to separate words
+    expr_desc = "icse"  # DO NOT USE "-" to separate words
     number_of_repetitions = 1  # how many times should we repeat a given experiment configuration?
     save_tree_as_binary = False  # save the  tree as a binary in a .tree file in case we want to load it again
     write_tree_to_file_as_text = False  # print the tree as text to txt file?
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         c=[1.5],  # exploration
         e=[20],  # visits before expansion
         budget=[60],  # budget allowed for an input
-        is_time_based=[False],  # are running based on time or iterations?
+        is_time_based=[True],  # are running based on time or iterations?
         time_cap_in_h=[1],  # if based on time, how long in hours are we allowed to run?
         num_iter=[50],  # if based on iterations, what is the number of search iteration planned?
         reward_type=['quantile'],  # 'prc', 'smoothed', 'log', 'binary', 'quantile'

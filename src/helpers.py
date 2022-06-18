@@ -178,7 +178,7 @@ def prep_expr_for_showmax(root_path: str, expr_dir: List[str]):
         id:003935,src:003637+000498,op:splice,rep:4,exec:00004626249,+max
         id:002391,src:002000+002009,op:splice,rep:8,exec:00001751333,+cov,+max
 
-    :PerfRL naming samples:
+    :TreeLine naming samples:
     .. code-block::
 
         id:000091,cost:0000016880,hs:0000008440,hnb:0,exec:00000000150,len:010,tu:010+max
@@ -202,7 +202,7 @@ def prep_expr_for_showmax(root_path: str, expr_dir: List[str]):
     expr_id = 1
     for expr in sorted(expr_dir):
         inputs_dir = 'queue' if os.path.exists(root_path + f'/{expr}' + '/queue') else 'buffer'
-        technique = 'tool:PerfFuzz' if inputs_dir == 'queue' else 'tool:PerfRL'
+        technique = 'tool:PerfFuzz' if inputs_dir == 'queue' else 'tool:TreeLine'
 
         # create a dir for this expr and a nested dir for inputs at the same time
         try:
