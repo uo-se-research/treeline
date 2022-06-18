@@ -6,6 +6,7 @@ import collections
 import os
 import re
 import sys
+import math
 import datetime
 import subprocess
 from typing import List, Iterable, Callable
@@ -103,6 +104,23 @@ def write_dict_to_csv(data: dict, output_dir: str, file_name: str, comments: str
         if comments is not None:
             e_file.write("# " + comments + "\n")
         pd.DataFrame(data).to_csv(e_file, index=False)
+
+
+def get_exploration_rate(current_episode: int, decay_rate: float, max_exploration_rate: float,
+                         min_exploration_rate: float) -> float:
+    """
+    A simple method that calculate the exploration rate based on how advance we are in the search process (how many
+    steps we took) and the other constraints given by the user at the beginning of the experiment.
+
+    :param current_episode: A count of the steps the agent took so far.
+    :param decay_rate: the decay rate of exploration as we step through the environment we are learning. In other
+        words, the speed in which we transition from exploration to exploitation.
+    :param max_exploration_rate: the max possible probability of exploration at the beginning of learning.
+    :param min_exploration_rate: the min possible probability of exploration throughout the learning process.
+    :return: a decimal representing the exploration rate.
+    """
+    return min_exploration_rate + (max_exploration_rate - min_exploration_rate) \
+        * math.exp(-1. * current_episode * decay_rate)
 
 
 def is_confident(values: List[float], k: float = 0.8) -> bool:

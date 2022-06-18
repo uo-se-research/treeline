@@ -21,7 +21,6 @@ from gramm.llparse import *
 from gramm.grammar import Grammar
 import mcts.mcts_globals as mg  # MCTS globals
 from mcts.mctsnode import MCTSNode
-from epsilonStrategy import EpsilonGreedyStrategy
 
 
 class MonteCarloTreeSearch:
@@ -74,7 +73,8 @@ class MonteCarloTreeSearch:
         self.exec_since_last_reset = 0
         self.reset_counter = 1
         self.tail_len = tail_len  # a tail size used to check for tree stabilization (reset or not) and uniqueness
-        self.epsilon = EpsilonGreedyStrategy(1, 1-max_threshold, threshold_decay)  # a growing threshold for reset
+        self.max_threshold = max_threshold
+        self.threshold_decay = threshold_decay
 
         # statistical and tracking variables.
         self.count_of_anomalous_runs = 0
@@ -172,7 +172,8 @@ class MonteCarloTreeSearch:
             uniqueness_percentage = 1.0 if self.exec_since_last_reset < self.tail_len \
                 else helper.find_prc_uniq_values(execution_costs[-self.tail_len:])
 
-            refresh_threshold = 1 - self.epsilon.get_exploration_rate(self.exec_since_last_reset)
+            refresh_threshold = 1 - helper.get_exploration_rate(self.exec_since_last_reset, self.threshold_decay, 1,
+                                                                1-self.max_threshold)
 
             # progress bar (info) prints (different for time vs. iter based).
             helper.progress_bar(is_time_based=is_time_based, start_time=expr_start_time, iter_counter=i,
@@ -860,4 +861,7 @@ class MonteCarloTreeSearch:
         :return: True if it stabilized or False otherwise.
         """
         # TODO: This can be a staticmethod.
-        return True if uniqueness_prc < (1 - self.epsilon.get_exploration_rate(self.exec_since_last_reset)) else False
+        return True if uniqueness_prc < (1 - helper.get_exploration_rate(self.exec_since_last_reset,
+                                                                         self.threshold_decay,
+                                                                         1,
+                                                                         1-self.max_threshold)) else False
