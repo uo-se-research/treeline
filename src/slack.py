@@ -5,6 +5,8 @@ import configparser
 
 logger = logging.getLogger("SlackMessages")
 
+HOST="HostName"
+
 """
 Login to the slack account and find the settings under "Incoming Webhooks". The POST URL should be in a 
 credentials.ini file under a section named "DEFAULT".
@@ -24,7 +26,7 @@ else:
 
 
 def post_message_to_slack(text: str):
-    slack_data = {'text': text}
+    slack_data = {'text': f"*{HOST}:* {text}"}
     response = requests.post(webhook_url, data=json.dumps(slack_data), headers={'Content-Type': 'application/json'})
 
     if response.status_code != 200:
