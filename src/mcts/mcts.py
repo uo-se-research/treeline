@@ -6,7 +6,7 @@ import os
 import gc
 import time
 import random
-import _pickle as cpickle
+import pickle as cpickle
 import datetime
 import collections
 from typing import Tuple
@@ -86,6 +86,7 @@ class MonteCarloTreeSearch:
         self.report_dict = collections.defaultdict(str)
         self.report_dict['Globals: E (# of visits before expansion)'] = str(mg.E)
         self.report_dict['Globals: C (exploration variable)'] = str(mg.C)
+        self.report_dict['Globals: Extensive Data Tracking?'] = str(mg.extensive_data_tracking)
         self.report_dict['Config: Cost Reward Scaling Value'] = str(self.cost_reward_scaling)
         self.report_dict['Config: Budget'] = str(self.allowed_budget)
         self.report_dict['Config: Uniqueness tail size'] = str(self.tail_len)
@@ -338,6 +339,7 @@ class MonteCarloTreeSearch:
         self.report_dict['Results: Max Observed Hotspot'] = "{:,}".format(self.max_observed_hotspot)
         self.report_dict['Dynamics: final Uniqueness Tail Len'] = str(self.tail_len)
         self.report_dict['Dynamics: final Cost Reward Scaling Value'] = str(self.cost_reward_scaling)
+        self.report_dict['Dynamics: Target App Min Possible Cost'] = str(mg.TARGET_APP_MIN_POSSIBLE_COST)
         self.save_tree_info_to_report(rollouts=rollouts, expansions=expansions, edges=edges,
                                       num_hot_nodes=len(hot_nodes), reset_counter=self.reset_counter,
                                       number_of_executions=self.exec_since_last_reset)

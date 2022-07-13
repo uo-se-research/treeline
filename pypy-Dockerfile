@@ -43,15 +43,15 @@ RUN apt-get install -y --no-install-recommends \
 
 # installing python3.9.13
 WORKDIR /opt
-RUN wget https://www.python.org/ftp/python/3.9.13/Python-3.9.13.tgz
-RUN tar xzf Python-3.9.13.tgz
-RUN rm Python-3.9.13.tgz
-WORKDIR /opt/Python-3.9.13
-RUN ./configure --enable-optimizations --enable-shared
-RUN make
-RUN make install
-RUN ln -sf /usr/local/bin/python3.9 /usr/local/bin/python3
-RUN ln -sf /usr/local/bin/pip3.9 /usr/local/bin/pip3
+RUN wget https://downloads.python.org/pypy/pypy3.7-v7.3.9-linux64.tar.bz2
+RUN tar xf pypy3.7-v7.3.9-linux64.tar.bz2
+RUN rm pypy3.7-v7.3.9-linux64.tar.bz2
+WORKDIR /opt/pypy3.7-v7.3.9-linux64
+RUN ./bin/pypy3 -m ensurepip --default-pip
+RUN ./bin/pypy3 -mpip install -U pip wheel
+RUN ln -sf /opt/pypy3.7-v7.3.9-linux64/bin/pypy3 /usr/local/bin/pypy3
+
+# RUN pypy3 -mpip install -r requirements.txt
 
 # installing clang
 RUN apt-get update
@@ -101,7 +101,8 @@ ENV PATH $PATH:/home/git/perffuzz/
 # install python packages
 WORKDIR /home/packages
 COPY resources/requirements.txt .
-RUN pip3 install -r requirements.txt
+RUN pypy3 -mpip install -r requirements.txt
+# RUN pip3 install -r requirements.txt
 
 # copy the target apps dir and build all the apps with AFL instrumenter
 COPY target_apps /home/treeline/target_apps
