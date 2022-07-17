@@ -1,0 +1,3 @@
+[submodule "src/pygramm"]
+	path = src/pygramm
+	url = git@github.com:zalsaeed/pygramm.git
