@@ -7,8 +7,8 @@ import csv
 import argparse
 from datetime import datetime
 
-from gramm.llparse import *
-from gramm.grammar import FactorEmpty
+from pygramm.llparse import *
+from pygramm.grammar import FactorEmpty
 from mcts.mcts import MonteCarloTreeSearch
 
 

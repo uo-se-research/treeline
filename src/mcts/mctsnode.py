@@ -7,9 +7,9 @@ import random
 from typing import Tuple
 
 import mcts.mcts_globals as mg  # MCTS globals
-from gramm.llparse import *
-from gramm.grammar import _Symbol, _Choice, _Seq, _Literal
-from gramm.biased_choice import Bias
+from pygramm.llparse import *
+from pygramm.grammar import _Symbol, _Choice, _Seq, _Literal
+from pygramm.biased_choice import Bias
 from targetAppConnect import InputHandler
 
 input_handler = InputHandler()

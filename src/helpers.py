@@ -14,7 +14,7 @@ from typing import List, Iterable, Callable
 import pandas as pd
 import numpy as np
 
-from gramm.grammar import RHSItem
+from pygramm.grammar import RHSItem
 from mcts.mctsnode import MCTSNode
 
 

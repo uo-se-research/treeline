@@ -9,8 +9,8 @@ import graphviz
 
 import slack
 import helpers as helper
-from gramm.llparse import *
-from gramm.grammar import FactorEmpty
+from pygramm.llparse import *
+from pygramm.grammar import FactorEmpty
 import mcts.mcts_globals as mg  # MCTS globals
 from mcts.mcts import MonteCarloTreeSearch
 

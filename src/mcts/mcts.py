@@ -17,8 +17,8 @@ import psutil
 from tdigest import TDigest
 
 import helpers as helper
-from gramm.llparse import *
-from gramm.grammar import Grammar
+from pygramm.llparse import *
+from pygramm.grammar import Grammar
 import mcts.mcts_globals as mg  # MCTS globals
 from mcts.mctsnode import MCTSNode
 
