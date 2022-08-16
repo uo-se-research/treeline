@@ -1,0 +1,86 @@
+# Grammar generated on May 24, 2022 using Arvada with the same seeds used for perffuzz.
+# Initial grammar loaded:
+
+start: t0;
+t0: "<" "?" t20 t22 "version" "=" "\"" t375 "\"" t463 "<" "str" t286 t992 "str" ">";
+t20: tletters;
+t22: " "
+    | "\n"
+    | "\n    ";
+t375: t375 tdigits
+    | "1" ".";
+t463: t463 t22
+    | "?" ">";
+t286: ">"
+    | t286 t20;
+t992: t107 t286 t992 "author" t286 t992
+    | "<" "/"
+    | t22 t992;
+t107: t22 t107
+    | "<" "author";
+tletters: tletter
+    | tletter tletters;
+tletter: "a"
+    | "b"
+    | "c"
+    | "d"
+    | "e"
+    | "f"
+    | "g"
+    | "h"
+    | "i"
+    | "j"
+    | "k"
+    | "l"
+    | "m"
+    | "n"
+    | "o"
+    | "p"
+    | "q"
+    | "r"
+    | "s"
+    | "t"
+    | "u"
+    | "v"
+    | "w"
+    | "x"
+    | "y"
+    | "z"
+    | "A"
+    | "B"
+    | "C"
+    | "D"
+    | "E"
+    | "F"
+    | "G"
+    | "H"
+    | "I"
+    | "J"
+    | "K"
+    | "L"
+    | "M"
+    | "N"
+    | "O"
+    | "P"
+    | "Q"
+    | "R"
+    | "S"
+    | "T"
+    | "U"
+    | "V"
+    | "W"
+    | "X"
+    | "Y"
+    | "Z";
+tdigits: tdigit
+    | tdigit tdigits;
+tdigit: "0"
+    | "1"
+    | "2"
+    | "3"
+    | "4"
+    | "5"
+    | "6"
+    | "7"
+    | "8"
+    | "9";
