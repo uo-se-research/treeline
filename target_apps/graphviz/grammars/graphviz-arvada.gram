@@ -1,0 +1,154 @@
+# Grammar generated on May 24, 2022 using Arvada with the same seeds used for perffuzz.
+# Initial grammar loaded:
+
+start: t0;
+t0: "digraph" t1601;
+t1208: t847 t1601
+    | t27 t1603;
+t847: t1208 t26
+    | t1208
+    | t27 t1603;
+t27: " "
+    | "\n    ";
+t442: t26 t442
+    | talphanums;
+t237: t27 t237
+    | "{";
+t26: "_"
+    | tletters;
+t305: t305 t27
+    | ">";
+t1095: t1095 t442
+    | t1601 t1095
+    | "}";
+t1601: t1208 t1095
+    | t847 t1095
+    | t1601 t1601
+    | t1602 t305
+    | t1601 t442
+    | ";"
+    | t442 t1601;
+t1602: "-"
+    | t442 t1602
+    | t27 t1602;
+t1603: t442 t1603
+    | t237 t27
+    | t237 t442;
+talphanums: talphanum
+    | talphanum talphanums;
+talphanum: "a"
+    | "b"
+    | "c"
+    | "d"
+    | "e"
+    | "f"
+    | "g"
+    | "h"
+    | "i"
+    | "j"
+    | "k"
+    | "l"
+    | "m"
+    | "n"
+    | "o"
+    | "p"
+    | "q"
+    | "r"
+    | "s"
+    | "t"
+    | "u"
+    | "v"
+    | "w"
+    | "x"
+    | "y"
+    | "z"
+    | "A"
+    | "B"
+    | "C"
+    | "D"
+    | "E"
+    | "F"
+    | "G"
+    | "H"
+    | "I"
+    | "J"
+    | "K"
+    | "L"
+    | "M"
+    | "N"
+    | "O"
+    | "P"
+    | "Q"
+    | "R"
+    | "S"
+    | "T"
+    | "U"
+    | "V"
+    | "W"
+    | "X"
+    | "Y"
+    | "Z"
+    | "0"
+    | "1"
+    | "2"
+    | "3"
+    | "4"
+    | "5"
+    | "6"
+    | "7"
+    | "8"
+    | "9";
+tletters: tletter
+    | tletter tletters;
+tletter: "a"
+    | "b"
+    | "c"
+    | "d"
+    | "e"
+    | "f"
+    | "g"
+    | "h"
+    | "i"
+    | "j"
+    | "k"
+    | "l"
+    | "m"
+    | "n"
+    | "o"
+    | "p"
+    | "q"
+    | "r"
+    | "s"
+    | "t"
+    | "u"
+    | "v"
+    | "w"
+    | "x"
+    | "y"
+    | "z"
+    | "A"
+    | "B"
+    | "C"
+    | "D"
+    | "E"
+    | "F"
+    | "G"
+    | "H"
+    | "I"
+    | "J"
+    | "K"
+    | "L"
+    | "M"
+    | "N"
+    | "O"
+    | "P"
+    | "Q"
+    | "R"
+    | "S"
+    | "T"
+    | "U"
+    | "V"
+    | "W"
+    | "X"
+    | "Y"
+    | "Z";
