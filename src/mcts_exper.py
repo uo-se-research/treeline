@@ -23,27 +23,34 @@ if __name__ == "__main__":
     # args
     # WF
     gram_file = [
-        "../target_apps/word-frequency/grammars/gram-wf-simple.txt"
+        "../target_apps/word-frequency/grammars/gram-wf-simple.txt",
+        "../target_apps/word-frequency/grammars/wf-arvada.gram",
     ]
 
     # libxml2
     # gram_file =[
     #     "../target_apps/libxml2/grammars/gram-libxml2-free-typing.txt",
+    #     "../target_apps/libxml2/grammars/libxml-arvada.gram",
     # ]
 
     # graphviz
     # gram_file = [
     #     "../target_apps/graphviz/grammars/parser-based.txt",
+    #     "../target_apps/graphviz/grammars/graphviz-arvada.gram",
     # ]
 
     # flex
     # gram_file = [
     #     "../target_apps/flex/grammars/flex.gram",
+    #     "../target_apps/flex/grammars/flex-limited.gram",
+    #     "../target_apps/flex/grammars/flex-arvada.gram",
     # ]
 
-    # TinyC
+    # lunaSVG
     # gram_file = [
-    #     "../target_apps/tinyc/grammars/tinyc.g4"
+    #     "../target_apps/lunasvg/grammars/svg.gram",
+    #     "../target_apps/lunasvg/grammars/svg-limited.gram",
+    #     "../target_apps/lunasvg/grammars/lunasvg-arvada.gram",
     # ]
 
     app_name = "wf"  # graphviz, wf, dc, libxml2, quicksort, insertion_sort, sqlite
