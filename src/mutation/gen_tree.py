@@ -124,7 +124,7 @@ def cli() -> object:
     import argparse
     parser = argparse.ArgumentParser("Generate sample sentences from grammar")
     parser.add_argument("grammar", type=argparse.FileType("r"))
-    parser.add_argument("--limit", type=int, default=60,
+    parser.add_argument("--length_limit", type=int, default=60,
                         help="Upper bound on generated sentence length")
     parser.add_argument("--tokens", help="Limit by token count",
                         action="store_true")

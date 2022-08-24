@@ -15,73 +15,75 @@ logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-SEEN = chunk_store.Chunkstore()
-
-
-def mutant(tree: gen_tree.DTreeNode,  budget: int) -> Optional[gen_tree.DTreeNode]:
-    """A copy with one choice replaced by a fresh expansion,
-    staying within budget.
-    No guarantee of getting something different!
-    FIXME:  Ensure uniqueness with store of already generated strings (or hashes)
+class Mutator:
+    """The mutator has internal state to splice previously seen subtrees,
+    as in Nautilus.
     """
-    # Tactic:  Compare the length of the whole sentence to
-    #    the budget.  This gives a margin, which can be
-    #    added to the length of the subtree we are replacing.
-    mutated = tree.copy()
-    # How much can a mutated subtree exceed its
-    # minimum requirement?
-    margin = budget - len(tree)
-    assert margin >= 0
-    mutable_node: gen_tree.DTreeNode = random.choice(mutated.mutation_points())
-    assert mutable_node is not None
-    mutable_node.expand(len(mutable_node) + margin)
-    return mutated
+    def __init__(self):
+        self.seen = chunk_store.Chunkstore()
 
+    def mutant(self, tree: gen_tree.DTreeNode,  budget: int) -> Optional[gen_tree.DTreeNode]:
+        """A copy with one choice replaced by a fresh expansion,
+        staying within budget.
+        NO guarantee of uniqueness ... do that outside, where you can compare to
+        all previously generated trees (not the chunkstore, which is subtrees).
+        """
+        # Tactic:  Compare the length of the whole sentence to
+        #    the budget.  This gives a margin, which can be
+        #    added to the length of the subtree we are replacing.
+        mutated = tree.copy()
+        # How much can a mutated subtree exceed its
+        # minimum requirement?
+        margin = budget - len(tree)
+        assert margin >= 0
+        mutable_node: gen_tree.DTreeNode = random.choice(mutated.mutation_points())
+        assert mutable_node is not None
+        mutable_node.expand(len(mutable_node) + margin)
+        return mutated
 
-def hybrid(tree: gen_tree.DTreeNode, budget: int) -> Optional[gen_tree.DTreeNode]:
-    """A copy with one choice replaced by a spliced
-    subtree to form a new tree.  Guaranteed not to return the
-    same tree, but could produce a previously seen tree.
-    """
-    assert isinstance(tree, gen_tree.DTreeNode)
-    # Tactic:  Compare the length of the whole sentence to
-    #    the budget.  This gives a margin, which can be
-    #    added to the length of the subtree we are replacing.
-    mutated = tree.copy()
-    # How much can a mutated subtree exceed its
-    # minimum requirement?
-    margin = budget - len(tree)
-    assert margin >= 0
-    choices = mutated.mutation_points()
-    splice_point: gen_tree = random.choice(choices)
-    assert isinstance(splice_point, gen_tree.DTreeNode)
-    assert splice_point is not None
-    # Splicing at root would just be substituting another (sub)tree that
-    # has already been seen, so we prefer any other node.
-    if len(choices) > 1 and splice_point == mutated:
-        for again in range(3):
-            splice_point: gen_tree = random.choice(choices)
-            if splice_point != mutated:
-                break
-    if splice_point == mutated:
-        # Will still occasionally happen by bad luck
-        log.debug(f"No mutable nodes except root in {mutated}\n ( {repr(mutated)} )")
-        return None
-    # Head is ok, but the children need to be replaced
-    substitute = SEEN.get_sub(splice_point, len(splice_point) + margin)
-    if substitute is None:
-        log.info(f"No compatible substitutes for '{splice_point}'")
-        log.info(f"Because: {SEEN.why_not(splice_point, len(splice_point) + margin)}\n")
-        return None
-    assert isinstance(substitute, gen_tree.DTreeNode)
-    splice_point.children = substitute.children
-    return mutated
+    def hybrid(self, tree: gen_tree.DTreeNode, budget: int) -> Optional[gen_tree.DTreeNode]:
+        """A copy with one choice replaced by a spliced
+        subtree to form a new tree.  Guaranteed not to return the
+        same tree, but could produce a previously seen tree.
+        """
+        assert isinstance(tree, gen_tree.DTreeNode)
+        # Tactic:  Compare the length of the whole sentence to
+        #    the budget.  This gives a margin, which can be
+        #    added to the length of the subtree we are replacing.
+        mutated = tree.copy()
+        # How much can a mutated subtree exceed its
+        # minimum requirement?
+        margin = budget - len(tree)
+        assert margin >= 0
+        choices = mutated.mutation_points()
+        splice_point: gen_tree = random.choice(choices)
+        assert isinstance(splice_point, gen_tree.DTreeNode)
+        assert splice_point is not None
+        # Splicing at root would just be substituting another (sub)tree that
+        # has already been seen, so we prefer any other node.
+        if len(choices) > 1 and splice_point == mutated:
+            for again in range(3):
+                splice_point: gen_tree = random.choice(choices)
+                if splice_point != mutated:
+                    break
+        if splice_point == mutated:
+            # Will still occasionally happen by bad luck
+            log.debug(f"No mutable nodes except root in {mutated}\n ( {repr(mutated)} )")
+            return None
+        # Head is ok, but the children need to be replaced
+        substitute = self.seen.get_sub(splice_point, len(splice_point) + margin)
+        if substitute is None:
+            log.debug(f"No compatible substitutes for '{splice_point}'")
+            log.debug(f"Because: {self.seen.why_not(splice_point, len(splice_point) + margin)}\n")
+            return None
+        assert isinstance(substitute, gen_tree.DTreeNode)
+        splice_point.children = substitute.children
+        return mutated
 
-
-def stash(t: gen_tree.DTreeNode):
-    """Save all subtrees that could be used in splicing"""
-    for m in t.mutation_points():
-        SEEN.put(m)
+    def stash(self, t: gen_tree.DTreeNode):
+        """Save all subtrees that could be used in splicing"""
+        for m in t.mutation_points():
+            self.seen.put(m)
 
 
 def cli() -> object:
@@ -89,7 +91,7 @@ def cli() -> object:
     import argparse
     parser = argparse.ArgumentParser("Mutating and splicing derivation trees")
     parser.add_argument("grammar", type=argparse.FileType("r"))
-    parser.add_argument("--limit", type=int, default=60,
+    parser.add_argument("--length_limit", type=int, default=60,
                         help="Upper bound on generated sentence length")
     parser.add_argument("--tokens", help="Limit by token count",
                         action="store_true")
@@ -97,6 +99,7 @@ def cli() -> object:
 
 
 def demo():
+    """Obsolete ... this was the test script for an earlier version."""
     from gramm.llparse import parse
     # from gramm.char_classes import CharClasses
     # from gramm.unit_productions import UnitProductions
