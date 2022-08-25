@@ -73,8 +73,8 @@ class Mutator:
         # Head is ok, but the children need to be replaced
         substitute = self.seen.get_sub(splice_point, len(splice_point) + margin)
         if substitute is None:
-            log.debug(f"No compatible substitutes for '{splice_point}'")
-            log.debug(f"Because: {self.seen.why_not(splice_point, len(splice_point) + margin)}\n")
+            # log.debug(f"No compatible substitutes for '{splice_point}'")
+            # log.debug(f"Because: {self.seen.why_not(splice_point, len(splice_point) + margin)}\n")
             return None
         assert isinstance(substitute, gen_tree.DTreeNode)
         splice_point.children = substitute.children
