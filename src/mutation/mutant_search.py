@@ -55,7 +55,7 @@ log.setLevel(logging.INFO)
 
 import argparse
 
-SEP = "%"   # For MacOS.  Change to ":" for Linux
+SEP = ":"   # For Linux.  In MacOS you may need another character (or maybe not)
 
 
 class Search:
@@ -246,7 +246,7 @@ def ready_grammar(f) -> gramm.grammar.Grammar:
 
 def cli() -> object:
     """Command line interface, including information for logging"""
-    parser = argparse.ArgumentParser("Mutating and splicing derivation trees")
+    parser = argparse.ArgumentParser(description="Mutating and splicing derivation trees")
     parser.add_argument("app", type=str,
                         help="Application name, e.g., graphviz")
     parser.add_argument("grammar", type=str,

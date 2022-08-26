@@ -59,5 +59,10 @@ Key differences include
   tokens.  But we also do not minimize inputs as Nautilus and AFL 
   do: We want strings that are pretty close to the limit. 
 
+Example command: 
+
+```commandline
+python3 mutant_search.py graphviz ../../target_apps/graphviz/grammars/parser-based.txt /tmp --seconds 30
+```
 
 
