@@ -201,8 +201,19 @@ def prep_expr_for_showmax(root_path: str, expr_dir: List[str]):
         root_path = root_path[:-1]
     expr_id = 1
     for expr in sorted(expr_dir):
-        inputs_dir = 'queue' if os.path.exists(root_path + f'/{expr}' + '/queue') else 'buffer'
-        technique = 'tool:PerfFuzz' if inputs_dir == 'queue' else 'tool:TreeLine'
+        if os.path.exists(root_path + f'/{expr}' + '/queue'):
+            inputs_dir = 'queue'
+            technique = 'tool:PerfFuzz'
+        elif os.path.exists(root_path + f'/{expr}' + '/buffer'):
+            inputs_dir = 'buffer'
+            technique = 'tool:TreeLine'
+        elif os.path.exists(root_path + f'/{expr}' + '/list'):
+            inputs_dir = 'list'
+            technique = 'tool:GramFuzz'
+        else:
+            raise RuntimeError(f"Cannot find queue/buffer/list in {root_path}/{expr}")
+        # inputs_dir = 'queue' if os.path.exists(root_path + f'/{expr}' + '/queue') else 'buffer'
+        # technique = 'tool:PerfFuzz' if inputs_dir == 'queue' else 'tool:TreeLine'
 
         # create a dir for this expr and a nested dir for inputs at the same time
         try:
@@ -233,7 +244,11 @@ def prep_expr_for_showmax(root_path: str, expr_dir: List[str]):
             # break by indicators and their values
             if base_name.endswith(','):
                 base_name = base_name[:-1]
-            indicators = base_name.split(',')
+
+            if technique == 'tool:GramFuzz':
+                indicators = base_name.split('-')
+            else:
+                indicators = base_name.split(',')
 
             # checking if we should skip an input because it is an orig
             skip_this_input = False
