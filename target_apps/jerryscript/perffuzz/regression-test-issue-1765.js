@@ -1,0 +1,1 @@
+Function()(Promise.prototype.toLocaleString())
