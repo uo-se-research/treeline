@@ -16,9 +16,17 @@ class AppRunner:
 
         :param target_app_bin: the path or name (if it is in env PATH) of binary file.
         """
-        if shutil.which(target_app_bin) is None:  # if the path to binary can't be resolved, throw an error!
-            raise RuntimeError(f"The binary given {target_app_bin} does not exist!")
-        self.target_app_bin = target_app_bin
+        if len(target_app_bin.split(" ")) > 1:
+            target_app_bin_list = target_app_bin.split(" ")
+            self.target_app_bin = target_app_bin_list.pop(0)  # the first element must be the bin
+            self.target_flags = []
+            for flag in target_app_bin_list:
+                self.target_flags.append(flag)
+        else:
+            self.target_app_bin = target_app_bin
+            self.target_flags = []
+        if shutil.which(self.target_app_bin) is None:  # if the path to binary can't be resolved, throw an error!
+            raise RuntimeError(f"The binary given {self.target_app_bin} does not exist!")
         self.timeout_flag = '-t 10000'
 
     def run_showmax(self, path_to_input: str) -> tuple:
@@ -37,8 +45,8 @@ class AppRunner:
     def run_showmax_path_len(self, path_to_input: str) -> int:
         if not os.path.isfile(path_to_input):
             raise RuntimeError(f"The path given {path_to_input} is not for a file!")
-        command = subprocess.run(['afl-showmax', self.timeout_flag, self.target_app_bin, path_to_input],
-                                 capture_output=True)
+        command = subprocess.run(['afl-showmax', self.timeout_flag, self.target_app_bin] + self.target_flags +
+                                 [path_to_input], capture_output=True)
 
         if command.returncode == 0:  # success, then capture output.
             return int(command.stdout)
@@ -50,8 +58,8 @@ class AppRunner:
     def run_showmax_hotspot(self, path_to_input: str) -> int:
         if not os.path.isfile(path_to_input):
             raise RuntimeError(f"The path given {path_to_input} is not for a file!")
-        command = subprocess.run(['afl-showmax', '-x', self.timeout_flag, self.target_app_bin, path_to_input],
-                                 capture_output=True)
+        command = subprocess.run(['afl-showmax', '-x', self.timeout_flag, self.target_app_bin] + self.target_flags +
+                                 [path_to_input], capture_output=True)
 
         if command.returncode == 0:  # success, then capture output.
             return int(command.stdout)
@@ -65,8 +73,8 @@ class AppRunner:
     def run_showmax_perf_map(self, path_to_input: str) -> dict:
         if not os.path.isfile(path_to_input):
             raise RuntimeError(f"The path given {path_to_input} is not for a file!")
-        command = subprocess.run(['afl-showmax', '-a', self.timeout_flag, self.target_app_bin, path_to_input],
-                                 capture_output=True)
+        command = subprocess.run(['afl-showmax', '-a', self.timeout_flag, self.target_app_bin] + self.target_flags +
+                                 [path_to_input], capture_output=True)
 
         # if command.returncode == 0:  # success, then capture output.
         perf_map = defaultdict(int)
