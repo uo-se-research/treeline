@@ -37,7 +37,11 @@ import datetime
 import time
 import pathlib
 import os
+import math
 
+from typing import Optional
+
+import mutation.search_config as conf
 import mutation.mutator  as mutator
 import mutation.gen_tree as gen_tree
 import gramm.llparse
@@ -56,6 +60,50 @@ log.setLevel(logging.INFO)
 import argparse
 
 SEP = ":"   # For Linux.  In MacOS you may need another character (or maybe not)
+
+class Candidate:
+    """Sometimes called a "seed", a candidate is a derivation tree (representing an input)
+    along with bookkeeping information for selecting among candidates.
+    """
+    def __init__(self, tree: gen_tree.DTreeNode, parent: Optional["Candidate"] = None):
+        self.root = tree
+        self.parent = parent
+        # How frequently is this node good? (Score similar to UCT)
+        self.count_selections = 1   # Floor 1 so we don't divide by zero
+        self.count_successful = 1   # How many times has it generated a good mutant child?
+
+    def select(self) -> gen_tree.DTreeNode:
+        """Get derivation tree and note that it has been selected"""
+        self.count_selections += 1
+        return self.root
+
+    def succeed(self):
+        """Note that this node was successful (updating score)"""
+        self.count_successful += 1
+
+    def score(self) -> float:
+        """Based on UCT for MCTS"""
+        exploit = self.count_successful / self.count_selections
+        if self.parent is None:
+            return exploit
+        parent_explored = math.log(self.parent.count_selections)
+        explore = math.sqrt(parent_explored / self.count_selections)
+        return exploit + conf.C * explore
+
+    def __str__(self):
+        return f"[{self.count_successful}/{self.count_selections}] '{self.root}'"
+
+
+class Frontier(list):
+    """The collection of derivation trees that are currently eligible for selection"""
+    def __init__(self):
+        pass  # No way to effectively override a literal
+
+    def __str__(self):
+        return "\n".join([str(c) for c in self])
+
+    # Inherits "append", "len", and iterator; may override later
+
 
 
 class Search:
@@ -77,7 +125,7 @@ class Search:
             print(f"ERROR: No connection to input handler")
             exit(1)
         self.stale = History()
-        self.frontier: list[mutation.gen_tree.DTreeNode] = []   # Trees on the frontier, to be mutated
+        self.frontier = Frontier()   # Trees on the frontier, to be mutated
         # Characterize the search frontier
         self.max_cost = 0    # Used for determining "has new cost"
         self.max_hot = 0     # Used for determining "has new max"
@@ -117,6 +165,8 @@ class Search:
         print("---")
         print(f"{self.count_splice_progress} times splicing a subtree gave progress")
         print(f"{self.count_expand_progress} times regenerating a subtree gave progress")
+        print("---")
+        print(self.frontier)
 
     def seed(self, n_seeds: int = 10):
         while len(self.frontier) < n_seeds:
@@ -126,7 +176,7 @@ class Search:
                 log.debug(f"Seeding, duplicated '{txt}'")
             else:
                 log.debug(f"Fresh seed '{txt}'")
-                self.frontier.append(t)
+                self.frontier.append(Candidate(t))
                 self.mutator.stash(t)
 
     def search(self, length_limit: int, time_limit_ms: int):
@@ -137,9 +187,10 @@ class Search:
         #
         search_started_ms = time.time_ns() // 1_000_000
         self.seed()
-        while True:   # FIXME: Should this be "while (True)" for a time-limited run?
+        while True:   # Until time limit
             found_good = False
-            for basis in self.frontier:
+            for candidate in self.frontier:
+                basis = candidate.select()
                 # OK to iterate while expanding frontier per Python docs
                 if (time.time_ns() // 1_000_000) - search_started_ms > time_limit_ms:
                     # Time has expired
@@ -169,7 +220,8 @@ class Search:
                 self.stale.record(str(mutant))
                 if self.test_mutant(str(mutant), search_started_ms):
                     found_good = True
-                    self.frontier.append(mutant)
+                    candidate.succeed()  # This was a good candidate!
+                    self.frontier.append(Candidate(mutant, parent=candidate))
                     # Concurrent with iteration, so we may mutate the mutant
                     # before finishing this scan of the frontier!
                     self.mutator.stash(mutant)
@@ -186,7 +238,6 @@ class Search:
         """Tests a valid mutant,
         True if it is good (new coverage, new max, etc)
         side effect writes record of good mutant to output
-        FIXME:  Make this fit the format that TreeLine uses
         """
         tot_cost, new_bytes, new_max, hot_spot = self.input_handler.run_input(mut)
         log.info(f"cost: {tot_cost}  new_bytes: {new_bytes} new_max: {new_max}  hot_spot: {hot_spot}")
@@ -224,16 +275,6 @@ class Search:
             print(mut, file=saved_input)
         return True
 
-       # FIXME:  Main program should pass directory named by MCTS conventions,
-        #   app:APPNAME-desc:nautilike-gram:GRAMNAME
-        #   and here we should save each generated input to a file that looks like
-        # id:000001,cost:0000069485,hs:0000004068,hnb:2,exec:1,len:006,tu:006,crtime:1651191586707,dur:5+cov+max+cost
-        # but we don't need all the keys, just
-        # 		Must Have keys:
-        # 		id: is the input id relative to the saved inputs.
-        # 		exec: is the input id relative to all the executed inputs.
-        # 		crtime: creation time which is an integer of milliseconds since the epoch. Can be found using this simple statement time.time_ns() // 1_000_000.
-        # 		dur: The duration of finding this input since the beginning of the search process in milliseconds. Using the same statement from crtime above to save the time at which the search process started (call it start ), then dur is (time.time_ns() // 1_000_000) - start.
 
 def ready_grammar(f) -> gramm.grammar.Grammar:
     gram = gramm.llparse.parse(f, len_based_size=True)

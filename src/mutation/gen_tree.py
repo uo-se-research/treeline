@@ -124,7 +124,7 @@ def cli() -> object:
     import argparse
     parser = argparse.ArgumentParser("Generate sample sentences from grammar")
     parser.add_argument("grammar", type=argparse.FileType("r"))
-    parser.add_argument("--length_limit", type=int, default=60,
+    parser.add_argument("--length", type=int, default=60,
                         help="Upper bound on generated sentence length")
     parser.add_argument("--tokens", help="Limit by token count",
                         action="store_true")
@@ -132,9 +132,9 @@ def cli() -> object:
 
 
 def main():
-
+    """Smoke test"""
     args = cli()
-    limit = args.limit
+    length = args.length
     f = args.grammar
     gram = gramm.llparse.parse(f, len_based_size=True)
     gram.finalize()
@@ -143,8 +143,8 @@ def main():
 
     for fresh_trees in range(5):
         print("Fresh tree:")
-        t = derive(gram, budget=limit)
-        print(repr(t))
+        t = derive(gram, budget=length)
+        # print(repr(t))
         print("=>")
         print(t)
 

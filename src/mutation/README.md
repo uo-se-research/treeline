@@ -59,7 +59,37 @@ Key differences include
   tokens.  But we also do not minimize inputs as Nautilus and AFL 
   do: We want strings that are pretty close to the limit. 
 
-Example command, executed from treeline/src/mutation: 
+## Running
+
+The back end instrumented execution of an application must take 
+place in a Docker container.  This must be built once, as described 
+in the overall Treeline documentation, like this: 
+
+```commandline
+docker build -t treeline:latest .
+```
+
+After it has been built, it can be started in Docker, like this
+```commandline
+docker run -p 2300:2300 --name fse -it treeline /bin/bash
+```
+This publishes port 2300, which can then be reached either within 
+the Docker container or from the host machine (e.g., from an 
+Intel-based Mac laptop for testing).   But before we can test input 
+generation for a particular application, we need an instrumented 
+version of that application running under the test harness in the 
+Docker container.  For example, to experiment with an instrumented 
+version of GraphViz, we need to build and run the instrumented 
+GraphViz, using the following command in the Docker console: 
+
+```commandline
+afl-treeline -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot
+```
+
+Note that the instrumented harness is stateful (it remembers the 
+coverage and performance records that have been observed), so a fresh
+experiment requires quitting the harness and restarting it in the 
+Docker console for the container. 
 
 ```commandline
 python3 mutant_search.py graphviz ../../target_apps/graphviz/grammars/parser-based.txt /tmp --seconds 30

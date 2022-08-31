@@ -23,7 +23,7 @@ documentation ([wf](target_apps/word-frequency/README.md), [libxml](target_apps/
 [graphviz](target_apps/graphviz/README.md), [flex](target_apps/flex/README.md)).
 e.g. , 
 ```shell
-afl-fuzz -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot
+afl-treeline -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot
 ```
 
 Run [mcts_expr](mcts_exper.py) with the configuration you want form your local machine or the `fse` container itself. 
