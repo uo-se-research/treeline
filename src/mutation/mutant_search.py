@@ -49,6 +49,17 @@ from gramm.char_classes import CharClasses
 from gramm.unit_productions import UnitProductions
 from mutation.dup_checker import History
 
+import logging
+logging.basicConfig()
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+
+## Experiment:  Weighted sampling of frontier
+##    using Monte Carlo scores with an 'exploration' component
+##    (not full MCTS, yet)
+##
+from mutation.weighted_choice import Scorable, Sampler
+
 # from mutation.fake_runner import InputHandler  # STUB
 from targetAppConnect import InputHandler    # REAL
 import slack
@@ -62,7 +73,9 @@ import argparse
 
 SEP = ":"   # For Linux.  In MacOS you may need another character (or maybe not)
 
-class Candidate:
+# Experiment:  Candidate scores subclass Scorable to be
+#    compatible with weighted_choice.Sampler
+class Candidate(Scorable):
     """Sometimes called a "seed", a candidate is a derivation tree (representing an input)
     along with bookkeeping information for selecting among candidates.
     """
@@ -92,18 +105,54 @@ class Candidate:
         return exploit + conf.C * explore
 
     def __str__(self):
-        return f"[{self.count_successful}/{self.count_selections}] '{self.root}'"
+        if self.parent:
+            pedigree = f" <= {self.parent.count_selections} '{self.parent.root}'"
+        else:
+            pedigree = f" (root)"
+        return f"[{self.score():3.2}: {self.count_successful}/{self.count_selections}] '{self.root}' {pedigree}"
 
 
-class Frontier(list):
+# Experiment:  Use weighted sampling based on Monte Carlo with exploration/exploitation
+#   balance (variant of MCTS) in place of iteration through frontier.  We'll make it
+#   look like a simple iteration, but under the hood it will prioritize nodes with
+#   higher scores, including freshly generated nodes.
+#
+class Frontier:
     """The collection of derivation trees that are currently eligible for selection"""
     def __init__(self):
-        pass  # No way to effectively override a literal
+        self.elements: list[Candidate] = []   # The whole frontier
+        self.fresh: list[Candidate] = []      # append puts them here, iterator pops them
+        # Note that iterator has its own local lists that overlap these
+    def __len__(self) -> int:
+        return len(self.elements)
 
     def __str__(self):
-        return "\n".join([str(c) for c in self])
+        return "\n".join([str(c) for c in self.elements])
 
-    # Inherits "append", "len", and iterator; may override later
+    def first_scores(self, elements: list[Candidate], n: int = 10) -> list[float]:
+        """Diagnostic info on score ranges"""
+        return [e.score() for e in elements[:n]]
+    def __iter__(self):
+        """Here is where we sneak in the weighted choice disguised as a
+        simple list iteration.
+        """
+        # Experiment: Focus much more on hottest elements
+        log.debug(f"First element scores: {self.first_scores(self.elements)}")
+        eligible = sorted(self.elements,key=lambda e: 0.0 - e.score())[:conf.HOT_BUF_SIZE]
+        log.debug(f"Selected first element scores: {self.first_scores(eligible)}")
+        sampler = Sampler(eligible)
+        draw_limit = len(eligible)
+        draw_count = 0   # bumped for draws from selector only
+        while draw_count < draw_limit:
+            if self.fresh:
+                yield self.fresh.pop()
+            else:
+                draw_count += 1
+                yield sampler.draw()
+
+    def append(self, element: Candidate):
+        self.elements.append(element)
+        self.fresh.append(element)
 
 
 
@@ -241,7 +290,7 @@ class Search:
                         self.count_expand_progress += 1
 
                 if not found_good:
-                    log.debug(f"Complete cycle without generating a good mutant")
+                    log.info(f"Complete cycle without generating a good mutant")
 
 
     def test_mutant(self, mut: str, start_time: int) -> bool:
@@ -250,7 +299,7 @@ class Search:
         side effect writes record of good mutant to output
         """
         tot_cost, new_bytes, new_max, hot_spot = self.input_handler.run_input(mut)
-        log.info(f"cost: {tot_cost}  new_bytes: {new_bytes} new_max: {new_max}  hot_spot: {hot_spot}")
+        log.debug(f"cost: {tot_cost}  new_bytes: {new_bytes} new_max: {new_max}  hot_spot: {hot_spot}")
         ##
         # Any reason to record this mutant at all?
         if not(tot_cost > self.max_cost
@@ -262,17 +311,17 @@ class Search:
         self.count_kept += 1
         suffix = ""
         if tot_cost > self.max_cost:
-            log.debug(f"New total cost {tot_cost} for '{mut}")
+            log.info(f"New total cost {tot_cost} for '{mut}")
             self.max_cost = tot_cost
             self.count_hnc += 1
             suffix += "+cost"
         elif hot_spot > self.max_hot:
-            log.debug(f"New hot spot {hot_spot} for '{mut}'")
+            log.info(f"New hot spot {hot_spot} for '{mut}'")
             self.max_hot = hot_spot
             self.count_hnm += 1
             suffix += "+max"
         elif new_max or new_bytes:
-            log.debug(f"New coverage or edge max for '{mut}'")
+            log.info(f"New coverage or edge max for '{mut}'")
             self.count_hnb += 1
             suffix += "+max"
 
