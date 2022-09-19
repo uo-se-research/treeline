@@ -53,6 +53,11 @@ if __name__ == "__main__":
     #     "../target_apps/lunasvg/grammars/lunasvg-arvada.gram",
     # ]
 
+    # JerryScript
+    gram_file = [
+        "../target_apps/jerryscript/grammars/JerryScrip-limited.gram",
+    ]
+
     app_name = "wf"  # graphviz, wf, dc, libxml2, quicksort, insertion_sort, sqlite
     expr_desc = "icse"  # DO NOT USE "-" to separate words
     number_of_repetitions = 1  # how many times should we repeat a given experiment configuration?
