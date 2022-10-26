@@ -24,7 +24,7 @@ The code here closely follows Schwartz' description, and could
 be simplified and accelerated with small changes.  It is designed to
 be read together with Schartz' description.  I'll optimize it later if needed.
 """
-
+from typing import List
 import random
 
 class Scorable:
@@ -43,7 +43,7 @@ class Sampler:
      implementation that has not been specialized to the use case of mutation search.
      """
 
-    def __init__(self, collection: list[Scorable]):
+    def __init__(self, collection: List[Scorable]):
         self.elements = collection.copy()
         # Names consistent with Schwarz, "Darts,  Dice, and Coins"
         n = len(self.elements)

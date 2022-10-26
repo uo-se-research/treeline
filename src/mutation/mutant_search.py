@@ -32,6 +32,7 @@ import io
 
 import context
 
+from typing import List
 # For logging results:
 import datetime
 import time
@@ -140,7 +141,7 @@ class Frontier:
     def __str__(self):
         return "\n".join([str(c) for c in self.elements])
 
-    def first_scores(self, elements: list[Candidate], n: int = 10) -> list[float]:
+    def first_scores(self, elements: List[Candidate], n: int = 10) -> List[float]:
         """Diagnostic info on score ranges"""
         return [e.score() for e in elements[:n]]
     def __iter__(self):

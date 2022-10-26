@@ -12,7 +12,7 @@ import gramm.grammar as grammar
 import gramm.llparse
 
 import random
-from typing import Optional
+from typing import Optional, List
 
 import logging
 logging.basicConfig()
@@ -97,7 +97,7 @@ class DTreeNode:
         else:
             assert False, "Case analysis was not exhaustive!"
 
-    def mutation_points(self) -> list["DTreeNode"]:
+    def mutation_points(self) -> List["DTreeNode"]:
         """Following example of Nautilus, we consider only
         occurrences of non-terminal symbols as potential
         points to replace a subtree.  (To mutate at more points,
@@ -107,7 +107,7 @@ class DTreeNode:
         if self.head.is_terminal():
             return []
         else:
-            points: list[DTreeNode] = []
+            points: List[DTreeNode] = []
             for child in self.children:
                 ch_points = child.mutation_points()
                 if ch_points:
