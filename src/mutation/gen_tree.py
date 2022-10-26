@@ -33,6 +33,7 @@ class DTreeNode:
         """An unexpanded node."""
         self.head = item
         self.children: list[DTreeNode] = []
+        self.cached_str = None
 
     def copy(self) -> "DTreeNode":
         """Do this before mutating to avoid side effects."""
@@ -48,9 +49,13 @@ class DTreeNode:
 
     def __str__(self) -> str:
         """The derived sentence"""
+        if self.cached_str:
+            return self.cached_str
         if isinstance(self.head, grammar._Literal):
-            return str(self.head.text)
-        return "".join(str(child) for child in self.children)
+            self.cached_str = str(self.head.text)
+            return self.cached_str
+        self.cached_str = "".join(str(child) for child in self.children)
+        return self.cached_str
 
     def __repr__(self) -> str:
         """In S-expression form"""

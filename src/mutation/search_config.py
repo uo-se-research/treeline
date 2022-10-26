@@ -1,5 +1,10 @@
 """Search configuration parameters"""
 
+# Allow remote connection
+# FUZZ_SERVER = "localhost"
+FUZZ_SERVER = "nehad.d.cs.uoregon.edu"
+FUZZ_PORT = 2300
+
 # C = 1.4   # ratio of exploration to exploitation factors in UCT
 C = 3.0
 

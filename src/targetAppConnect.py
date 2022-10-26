@@ -25,17 +25,17 @@ class Payload(Structure):
 
 class InputHandler:
 
-    def __init__(self):
+    def __init__(self, server="localhost", port=2300):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self._server = InputHandler.server_connect()
+        self._server = InputHandler.server_connect(server, port)
 
     @staticmethod
-    def server_connect():
+    def server_connect(server="localhost", port=2300):
         """
         Setting up the client connection to the C app server.
         :return: socket
         """
-        server_address = ('localhost', 2300)
+        server_address = (server, port)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
         # s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 8192)
