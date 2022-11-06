@@ -94,6 +94,10 @@ def cli() -> object:
                         help="How many times we should run the same experiment?")
     parser.add_argument("--slack", help="Report experiment to Slack",
                         action="store_true")
+    parser.add_argument("--search", type=str,
+                        help="bfs (breadth-first) or mcw (monte-carlo weighted)",
+                        required=True,
+                        choices = ["bfs", "mcw"])
     return parser.parse_args()
 
 
@@ -129,12 +133,16 @@ def main():
     timeout_ms = args.seconds * 1000
     number_of_exper = int(args.runs)
     report_to_slack = bool(args.slack)
+    search_strategy = args.search
+    log.info(f"Experiment {args.seconds} seconds with {args.search}")
     for run_id in range(1, number_of_exper+1):
         logdir = create_result_directory(args.directory, args.app, gram_name)
         if report_to_slack:
             slack_message(f"New mutant run #{run_id} out of {number_of_exper}.")
             slack_message(f"Configs: length=`{length_limit}`, gram_path=`{gram_path}`, gram_name=`{gram_name}`, "
-                          f"duration(s)=`{args.seconds}`, logdir=`{logdir}`, tokens=`{args.tokens}`")
+                          f"duration(s)=`{args.seconds}`, logdir=`{logdir}`, tokens=`{args.tokens}`",
+                          f"strategy {args.search}")
+        search_config.init(strategy=search_strategy)
         searcher = search.Search(gram, logdir,
                                  InputHandler(search_config.FUZZ_SERVER, search_config.FUZZ_PORT),
                                  frontier=search_config.FRONTIER

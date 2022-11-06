@@ -20,14 +20,19 @@ FUZZ_SERVER = "localhost"
 FUZZ_PORT = 2300
 
 # Selection strategy class
-# FRONTIER = mutation.search.SimpleFrontier
-FRONTIER = mutation.search.WeightedFrontier
+FRONTIER = mutation.search.SimpleFrontier
+# FRONTIER = mutation.search.WeightedFrontier
 
 
 
-def init():
+def init(strategy: str):
     """Later we might use a configuration file or
     otherwise allow these parameters to be tested and tuned.
     """
-    pass
+    if strategy == "bfs":
+        FRONTIER = mutation.search.SimpleFrontier
+    elif strategy == "mcw":
+        FRONTIER = mutation.search.WeightedFrontier
+    else:
+        assert False, "Bad strategy choice"
 

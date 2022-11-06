@@ -21,6 +21,12 @@ log.setLevel(logging.INFO)
 
 SEP = ":"   # For Linux.  In MacOS you may need another character (or maybe not)
 
+class Success(enum.Enum):
+    COST = "cost"
+    HOT = "hot"
+    COV = "cov"
+
+
 global_node_count = 0
 def get_serial() -> int:
     """Returns the next serial number"""
@@ -68,23 +74,30 @@ class Candidate(Scorable):
         self.count_selections += 1
         return self.root
 
-    def succeed(self):
+    def succeed(self, reason: Success):
         """Note that this node was successful (updating score).
         Propagate in MCTS style. Each trial should either add to
         successes or failures.
         """
+        if reason == Success.COST:
+            value = conf.WEIGHT_NEWCOST
+        elif reason == Success.HOT:
+            value = conf.WEIGHT_NEWMAX
+        else:
+            assert reason == Success.COV
+            value = conf.WEIGHT_NEWCOV
         # Non-propagating
-        self.count_successful_direct += 1
+        self.count_successful_direct += value
         self.count_selections_direct += 1
         # Propagating
-        self.propagate_success()
+        self.propagate_success(value)
 
 
-    def propagate_success(self):
-        self.count_successful += 1
+    def propagate_success(self, value: int):
+        self.count_successful += value
         self.count_selections += 1
         if self.parent:
-            self.parent.propagate_success()
+            self.parent.propagate_success(value)
 
     def fail(self):
         """Note that this node was not successful (updating score).
@@ -357,22 +370,25 @@ class Search:
                 # it.
                 found_good = True
                 self.count_kept += 1
-                candidate.succeed()  # This was a good candidate!
+                # candidate.succeed()  # This was a good candidate!
                 suffix = ""
                 if tot_cost > self.max_cost:
                     log.info(f"New total cost {tot_cost} for '{mutant}")
                     self.max_cost = tot_cost
                     self.count_hnc += 1
                     suffix += "+cost"
+                    candidate.succeed(Success.COST)
                 elif hot_spot > self.max_hot:
                     log.info(f"New hot spot {hot_spot} for '{mutant}'")
                     self.max_hot = hot_spot
                     self.count_hnm += 1
                     suffix += "+max"
+                    candidate.succeed(Success.HOT)
                 elif new_max or new_bytes:
                     log.info(f"New coverage or edge max for '{mutant}'")
                     self.count_hnb += 1
                     suffix += "+cov"
+                    candidate.succeed(Success.COV)
                 self.frontier.append(Candidate(mutant, parent=candidate, cost=tot_cost, reasons=suffix))
 
                 found_time_ms = time.time_ns() // 1_000_000
