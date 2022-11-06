@@ -13,7 +13,7 @@ from typing import Optional
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 class Mutator:
     """The mutator has internal state to splice previously seen subtrees,
@@ -35,10 +35,12 @@ class Mutator:
         # How much can a mutated subtree exceed its
         # minimum requirement?
         margin = budget - len(tree)
-        assert margin >= 0
+        assert margin >= 0, "Asked to expand a tree that is too long already"
         mutable_node: gen_tree.DTreeNode = random.choice(mutated.mutation_points())
         assert mutable_node is not None
         mutable_node.expand(len(mutable_node) + margin)
+        assert len(mutated) <= budget, (f"Exceeded budget expanding '{tree}' ({len(tree)}) to '{mutated}' ({len(mutated)})"
+                                + f"\n margin was {margin}")
         return mutated
 
     def hybrid(self, tree: gen_tree.DTreeNode, budget: int) -> Optional[gen_tree.DTreeNode]:
@@ -54,9 +56,10 @@ class Mutator:
         # How much can a mutated subtree exceed its
         # minimum requirement?
         margin = budget - len(tree)
-        assert margin >= 0
+        assert margin >= 0, f"Margin < 0, budget {budget}, len {len(tree)}, tree '{tree}'"
+
         choices = mutated.mutation_points()
-        splice_point: gen_tree = random.choice(choices)
+        splice_point: gen_tree.DTreeNode = random.choice(choices)
         assert isinstance(splice_point, gen_tree.DTreeNode)
         assert splice_point is not None
         # Splicing at root would just be substituting another (sub)tree that
@@ -70,6 +73,8 @@ class Mutator:
             # Will still occasionally happen by bad luck
             log.debug(f"No mutable nodes except root in {mutated}\n ( {repr(mutated)} )")
             return None
+        # Debugging info only
+        splice_original = splice_point.copy()
         # Head is ok, but the children need to be replaced
         substitute = self.seen.get_sub(splice_point, len(splice_point) + margin)
         if substitute is None:
@@ -77,7 +82,20 @@ class Mutator:
             # log.debug(f"Because: {self.seen.why_not(splice_point, len(splice_point) + margin)}\n")
             return None
         assert isinstance(substitute, gen_tree.DTreeNode)
-        splice_point.children = substitute.children
+        assert len(substitute) <= len(splice_point) + margin, "Substitute is too long!"
+        # log.debug(f"Splicing '{substitute}' into '{mutated}' for '{splice_point}'")
+        # log.debug(f"Splice point was '{splice_point}")
+        splice_point.sub_children(substitute.children)
+        # log.debug(f"Now splice point is '{splice_point}'")
+        # log.debug(f"Resulting in '{mutated}'")
+        if len(mutated) > budget: # DEBUG
+            log.error(f"Length of hybridized tree '{mutated}' is {len(mutated)}")
+            log.error(f"Original tree '{tree}' had length {len(tree)}")
+            log.error(f"Margin was {margin}")
+            log.error(f"Splice point subtree was '{splice_original}', length {len(splice_original)}")
+            log.error(f"Provided substitute was '{substitute}', length {len(substitute)}")
+            log.error(f"get_sub was called with length limit {len(splice_point) + margin}")
+            assert False, "Hybridized tree is too long"
         return mutated
 
     def stash(self, t: gen_tree.DTreeNode):

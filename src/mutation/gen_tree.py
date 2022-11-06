@@ -32,7 +32,11 @@ class DTreeNode:
     def __init__(self, item: grammar.RHSItem):
         """An unexpanded node."""
         self.head = item
-        self.children: list[DTreeNode] = []
+        self.children: List["DTreeNode"] = []
+        self.cached_str = None
+
+    def sub_children(self, children: List["DTreeNode"]):
+        self.children = children
         self.cached_str = None
 
     def copy(self) -> "DTreeNode":
@@ -43,14 +47,13 @@ class DTreeNode:
 
     def __len__(self) -> int:
         """The length of the derived sentence"""
-        if self.head.is_terminal():
-            return self.head.min_tokens()
-        return sum(len(child) for child in self.children)
+        return len(str(self))
+
 
     def __str__(self) -> str:
         """The derived sentence"""
-        if self.cached_str:
-            return self.cached_str
+        # if self.cached_str:
+        #    return self.cached_str
         if isinstance(self.head, grammar._Literal):
             self.cached_str = str(self.head.text)
             return self.cached_str
@@ -70,6 +73,8 @@ class DTreeNode:
         replace the current expansion by another, which is one
         way to mutate a derivation tree.
         """
+        # Retaining a cached string can cause trouble!
+        self.cached_str = None
         # This might be a terminal node, a sequence, a choice, etc. ...
         # we just do an exhaustive case analysis.
         #
@@ -89,11 +94,13 @@ class DTreeNode:
                 excess = len(child) - child.head.min_tokens()
                 margin -= excess
             assert margin >= 0
+            assert len(self) <= budget
         elif isinstance(head, grammar._Choice) or isinstance(head, grammar._Kleene):
             # Just one child, which is the selected choice
             child = DTreeNode(random.choice(head.choices(budget)))
             self.children = [ child ]
             child.expand(budget)
+            assert len(child) <= budget, "Exceeded budget in expansion of _Choice"
         else:
             assert False, "Case analysis was not exhaustive!"
 
