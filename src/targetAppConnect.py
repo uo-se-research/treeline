@@ -102,3 +102,8 @@ class InputHandler:
         else:
             self._server = InputHandler.server_connect()
             print("\nSocket Open")
+
+    def restart(self):
+        """Close and reopen to clear tables from current run"""
+        self.close_connection()
+        self.open_connection()

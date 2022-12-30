@@ -15,7 +15,6 @@ from mutation.const_config import *
 import mutation.search
 
 # Allow remote connection
-# FUZZ_SERVER = "localhost"
 FUZZ_SERVER = "localhost"
 FUZZ_PORT = 2300
 

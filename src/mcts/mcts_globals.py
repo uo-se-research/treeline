@@ -47,7 +47,7 @@ each time we observe a new max cost.
 .. code-block:: python
 
     for i in [0, 499, 500, 999, 1000, 99999, 100000, 999999, 1000000, 999999999, 1000000000]:
-        idx = np.digitize(i, bins=buckets)
+        idx = np.digitize(i, bins=bins)
         print(f"range: {i} has index={idx} which translate to tail={tails[idx]}")
 
 :The results would be:

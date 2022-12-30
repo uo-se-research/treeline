@@ -2,11 +2,7 @@
 Based (roughly) on the chunkstore of Nautilus grammar-based mutation tester.
 """
 
-# We really want to do this exactly once, by importing a single path adjustment module (?)
-# import sys, os
-# this_folder = os.path.abspath(os.path.join(os.path.dirname(__file__)))
-# sys.path.insert(0, os.path.abspath(this_folder))
-
+# Search path adjustment
 import context
 
 import gramm.grammar as grammar
@@ -30,6 +26,17 @@ class Chunk:
         self.length = len(text)
         log.debug(f"Indexing {t.head} => '{t}'  ({text})")
         self.sig = hash(text)
+        # Stats, as guidance to choose reasonable selection mechanisms
+        self.num_selections = 0
+        self.num_rewards = 0
+        self.sum_rewards = 1.0
+
+    def select(self):
+        self.num_selections += 1
+
+    def reward(self, amt=1.0):
+        self.sum_rewards += amt
+        self.num_rewards += 1
 
     def __str__(self) -> str:
         return str(self.node)
@@ -53,7 +60,7 @@ class Chunkstore:
         for (nt, chunks) in self.chunks.items():
             lines.append(f"\t{nt}:")
             for chunk in chunks:
-                lines.append(f"\t\t'{chunk.node}' ({chunk.length})")
+                lines.append(f"\t\t'{chunk.node}' ({chunk.length}) {chunk.num_rewards}/{chunk.num_selections}")
         return '\n'.join(lines)
 
     def put(self, t: gen_tree.DTreeNode):
@@ -64,7 +71,7 @@ class Chunkstore:
         text = str(t)
         sig = hash(text)
         if sig in self.seen_chunks[hd]:
-            return   ## We might consider incrementing weight
+            return   ## ToDo: We might consider incrementing weight
         self.seen_chunks[hd].add(sig)
         self.chunks[hd].append(Chunk(t, text))
 

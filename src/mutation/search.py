@@ -5,6 +5,8 @@ import time
 import math
 import enum
 
+from tdigest import TDigest
+
 from mutation.weighted_choice import Scorable, Sampler
 import mutation.mutator  as mutator
 import mutation.gen_tree as gen_tree
@@ -19,12 +21,18 @@ logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
+def time_ms() -> int:
+    """Current time in ms"""
+    return (time.time_ns() // 1_000_000)
+
 SEP = ":"   # For Linux.  In MacOS you may need another character (or maybe not)
 
 class Success(enum.Enum):
-    COST = "cost"
-    HOT = "hot"
-    COV = "cov"
+    COST = "cost"   # New maximum cost
+    HOT = "hot"     # New maximum count on an edge (hot spot)
+    COV = "cov"     # New coverage
+    QNT = "quant"   # In the top quantile (tdigest ranking)
+
 
 
 global_node_count = 0
@@ -243,7 +251,6 @@ class Search:
             print(f"ERROR: No connection to input handler")
             exit(1)
         self.stale = History()
-        # self.frontier = Frontier()   # Trees on the frontier, to be mutated
         self.frontier = frontier()
         # Characterize the search frontier
         self.max_cost = 0  # Used for determining "has new cost"
@@ -276,7 +283,7 @@ class Search:
         """
         Write a complete report to string. Can be used for slack or prints.
         """
-        summary = "\n".join([str(e) for e in self.frontier])
+        summary = "\n".join([str(e) for e in self.frontier.elements])
         summary += "\n====\nPedigree of top 5 by cost\n"
         by_cost = sorted(self.frontier.elements, key=lambda e: 0 - e.cost)
         for i in range(min(5, len(by_cost))):
@@ -286,7 +293,7 @@ class Search:
             *** Summary of search ***
 
             Results logged to {self.logdir}
-            {len(self.frontier)} nodes on search frontier
+            {len(self.frontier.elements)} nodes on search frontier
             {self.max_cost:_} highest execution cost encountered
             {self.count_hnb} ({percent(self.count_hnb, self.count_valid)}%) occurrences new coverage (AFL bucketed criterion)
             {self.count_hnm} ({percent(self.count_hnm, self.count_valid)}%) occurrences new max count on an edge (AFL mod in TreeLine and PerfFuzz)
@@ -304,6 +311,7 @@ class Search:
             ---
 
             """
+
         return summary
 
     def seed(self, n_seeds: int = 10):
@@ -323,14 +331,17 @@ class Search:
         # generating new mutants from them.  Any mutant that is new and achieves some
         # progress is added to the frontier.
         #
-        search_started_ms = time.time_ns() // 1_000_000
+        search_started_ms = time_ms()
         self.seed()
         while True:  # Until time limit
             found_good = False
+            # Iteration of frontier depends on subclass of frontier; may
+            # be bfs, or weighted by uct, or other search tactics.  Frontier
+            # class also determines what a "complete" iteration is.
             for candidate in self.frontier:
                 basis = candidate.select()  # from DTreeNode to derivation
                 # OK to iterate while expanding frontier per Python docs
-                if (time.time_ns() // 1_000_000) - search_started_ms > time_limit_ms:
+                if time_ms() - search_started_ms > time_limit_ms:
                     # Time has expired
                     return
                 self.count_attempts += 1
@@ -391,7 +402,7 @@ class Search:
                     candidate.succeed(Success.COV)
                 self.frontier.append(Candidate(mutant, parent=candidate, cost=tot_cost, reasons=suffix))
 
-                found_time_ms = time.time_ns() // 1_000_000
+                found_time_ms = time_ms()
                 elapsed_time_ms = found_time_ms - search_started_ms
                 label = (f"id{SEP}{self.count_kept:08}-cost{SEP}{tot_cost:010}-exec{SEP}{self.count_valid:08}"
                          + f"-crtime{SEP}{found_time_ms}-dur{SEP}{elapsed_time_ms}{suffix}")

@@ -2,6 +2,10 @@
 Two kinds of mutation at a non-terminal symbol in the derivation tree:
    (a)  Generate a random substitute subtree
    (b)  Splice a previously seen tree
+
+December 2022:  Refactoring to separate identification of potential mutations or hybrids
+  from selecting one, so that selection and adjustment of weights ("learning") can be
+  put in one place where we can measure and calibrate.
 """
 import context
 import mutation.gen_tree  as gen_tree
@@ -43,6 +47,16 @@ class Mutator:
                                 + f"\n margin was {margin}")
         return mutated
 
+    # Breaking one method "hybrid" which selected and applied mutations into
+    # at least two, to allow tuning:
+    #    - Identify mutation points
+    #    - Apply to one or more
+    #    - Reward successful mutation points
+    #
+    # First (identify mutation points) already exists. We need to modify it to
+    #    be able to keep "score" of which subtrees are worth mutating.
+    # Selection is currently random.  We'll defer that to elsewhere.
+    #
     def hybrid(self, tree: gen_tree.DTreeNode, budget: int) -> Optional[gen_tree.DTreeNode]:
         """A copy with one choice replaced by a spliced
         subtree to form a new tree.  Guaranteed not to return the
@@ -66,6 +80,9 @@ class Mutator:
         # has already been seen, so we prefer any other node.
         if len(choices) > 1 and splice_point == mutated:
             for again in range(3):
+                # TODO:  Here is where we could learn which splice points
+                #   are more or less fruitful, and/or generate several mutants
+                #   rather than just one.
                 splice_point: gen_tree = random.choice(choices)
                 if splice_point != mutated:
                     break
@@ -76,6 +93,9 @@ class Mutator:
         # Debugging info only
         splice_original = splice_point.copy()
         # Head is ok, but the children need to be replaced
+        # Todo: We are choosing a subtree (a "chunk") to substitute into the derivation
+        #    tree.  We should remember it so that we can record whether this substitution
+        #    was successful, to learn how to make better substitutions.
         substitute = self.seen.get_sub(splice_point, len(splice_point) + margin)
         if substitute is None:
             # log.debug(f"No compatible substitutes for '{splice_point}'")

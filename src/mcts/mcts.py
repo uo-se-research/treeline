@@ -564,7 +564,7 @@ class MonteCarloTreeSearch:
         the max/min is adjusted.
         """
         new_range = self.max_observed_cost - self.min_observed_cost
-        idx = np.digitize(new_range, bins=mg.buckets)
+        idx = np.digitize(new_range, bins=mg.bins)
         self.tail_len = mg.tails[idx]
 
     def has_new_cost(self, cost: int) -> bool:

@@ -15,4 +15,10 @@ HOT_BUF_FRAC = 0.5
 WEIGHT_NEWCOV = 1.0
 WEIGHT_NEWMAX = 5.0
 WEIGHT_NEWCOST = 10.0
+WEIGHT_QUANTILE = 3.0 # In the top quantile
+
+# What is "nearly top cost"?
+# We'll start with top 5th percentile
+QUANTILE = 0.05
+
 
