@@ -311,6 +311,7 @@ class Search:
             ---
 
             """
+        # summary += str(self.mutator.seen)
 
         return summary
 

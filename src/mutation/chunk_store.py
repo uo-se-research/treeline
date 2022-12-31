@@ -51,7 +51,10 @@ class Chunkstore:
     """
     def __init__(self):
         self.chunks: dict[grammar._Symbol, list[Chunk]] = dict()
-        self.seen_chunks: dict[grammar._Symbol, set[int]] = dict()
+        # self.seen_chunks: dict[grammar._Symbol, set[int]] = dict()
+        # Index from signature to actual subtree so we can find them
+        # to record experience
+        self.seen_chunks: dict[int, Chunk] = dict()
 
     def __str__(self):
         """Printable as an indented list"""
@@ -67,13 +70,13 @@ class Chunkstore:
         hd = t.head
         if hd not in self.chunks:
             self.chunks[hd] = []
-            self.seen_chunks[hd] = set()
         text = str(t)
         sig = hash(text)
-        if sig in self.seen_chunks[hd]:
+        if sig in self.seen_chunks:
             return   ## ToDo: We might consider incrementing weight
-        self.seen_chunks[hd].add(sig)
-        self.chunks[hd].append(Chunk(t, text))
+        chunk = Chunk(t, text)
+        self.seen_chunks[sig] = chunk
+        self.chunks[hd].append(chunk)
 
 
     def get_sub(self, t: gen_tree.DTreeNode, max_len: int) -> Optional[gen_tree.DTreeNode]:
