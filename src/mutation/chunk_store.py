@@ -73,7 +73,11 @@ class Chunkstore:
         text = str(t)
         sig = hash(text)
         if sig in self.seen_chunks:
-            return   ## ToDo: We might consider incrementing weight
+            # If we're trying to store it again, it must
+            # have appeared in a good tree
+            chunk = self.seen_chunks[sig]
+            chunk.reward()
+            return
         chunk = Chunk(t, text)
         self.seen_chunks[sig] = chunk
         self.chunks[hd].append(chunk)

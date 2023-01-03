@@ -47,9 +47,12 @@ class Mutator:
                                 + f"\n margin was {margin}")
         return mutated
 
-    # Breaking one method "hybrid" which selected and applied mutations into
-    # at least two, to allow tuning:
-    #    - Identify mutation points
+    # Todo: Breaking one method "hybrid" which selected and applied mutations into
+    #   at least two, to allow tuning:
+    #    - Identify mutation points  (here)
+    #    - Select mutation points - maybe here or in search
+    #    - Identify candidate replacements (here)
+    #    - Select one or more (maybe in search?)
     #    - Apply to one or more
     #    - Reward successful mutation points
     #
@@ -73,6 +76,7 @@ class Mutator:
         assert margin >= 0, f"Margin < 0, budget {budget}, len {len(tree)}, tree '{tree}'"
 
         choices = mutated.mutation_points()
+        # This random choice might return a list instead
         splice_point: gen_tree.DTreeNode = random.choice(choices)
         assert isinstance(splice_point, gen_tree.DTreeNode)
         assert splice_point is not None
@@ -118,6 +122,8 @@ class Mutator:
             assert False, "Hybridized tree is too long"
         return mutated
 
+    # Note: we probably don't want to stash all subtrees all the time,
+    # just newly generated subtrees that were useful.
     def stash(self, t: gen_tree.DTreeNode):
         """Save all subtrees that could be used in splicing"""
         for m in t.mutation_points():

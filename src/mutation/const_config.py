@@ -5,10 +5,16 @@ and imported into search.py directly as well as mutant_search.py indirectly.
 # C = 1.4   # ratio of exploration to exploitation factors in UCT
 C = 3.0
 
-HOT_BUF_SIZE = 300
-HOT_BUF_MIN = 100
-HOT_BUF_MAX = 1000
-HOT_BUF_FRAC = 0.5
+HOT_BUF_SIZE = 300 # 50   # Was 300
+
+# Winnowing is discarding inputs that have not proved
+# useful, in particular inputs that were retained because of
+# new coverage but which are no longer unique in achieving that
+# coverage (i.e., superseded by other inputs discovered later)
+
+WINNOW_TRIGGER_SIZE = 1000   # Initially 1000, fairly conservative to avoid overshoot
+WINNOW_TRIGGER_GROW = 1.25   # Lower bound on how much frontier must grow before next winnow
+
 
 # Weighting factors for "wins", instead of 1/0
 #
