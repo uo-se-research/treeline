@@ -34,13 +34,16 @@ class Success(enum.Enum):
     QNT = "quant"   # In the top quantile (tdigest ranking)
 
 
-
 global_node_count = 0
 def get_serial() -> int:
     """Returns the next serial number"""
     global global_node_count
     global_node_count += 1
     return global_node_count
+
+# TDigest at module level so that it is accessible from Candidate
+# for scoring without passing it from Search
+quantile_digest = TDigest()
 
 def percent(portion: int, total: int) -> int:
     """Fraction as a percentage, rounded"""
@@ -127,7 +130,7 @@ class Candidate(Scorable):
         frontier nodes since our very bushy tree precludes fully expanding
         a node in the "expand" step of MCTS.
         """
-        exploit = self.count_successful / self.count_selections
+        exploit = (1 + quantile_digest.cdf(self.cost)) *  self.count_successful / self.count_selections
         if self.parent is None:
             return exploit
         # Since we are working bottom up, the exploration component doesn't
@@ -143,7 +146,8 @@ class Candidate(Scorable):
             pedigree = f" <= {self.parent.count_selections} '{self.parent.root}'"
         else:
             pedigree = f" (root)"
-        return (f"[{self.score():3.2}: {self.reasons} c={self.cost:4_} "
+        percentile = round(100 * quantile_digest.cdf(self.cost), 1)
+        return (f"[{self.score():3.2}: {self.reasons} c={self.cost:4_}({percentile})"
                 f"{self.count_successful_direct}/{self.count_selections_direct}"
                 f"{self.count_successful}/{self.count_selections}] '{self.root}'")
 
@@ -155,7 +159,7 @@ class Candidate(Scorable):
 
 
 # Scoring factors
-#    Classic UCT (also classic fuzz genetic search):  1/0, anything good or not
+#    Classic UCT/UCB (also classic fuzz genetic search):  1/0, anything good or not
 #    Fecundity:  Can I generate fresh inputs from this node (or from its descendants)?
 #    Coverage:  Easiest, probably lowest weight positive factor
 #    New max on edge: Higher weight than coverage
@@ -262,6 +266,7 @@ class Search:
         self.count_hnb = 0  # How many times did we see new coverage (by AFL bucketed criterion)
         self.count_hnm = 0  # How many times did we see a max on an edge (AFL modification)
         self.count_hnc = 0  # How many times did we see a new max total cost (AFL modification)
+        self.count_quant = 0 # How many times did we keep a node because it is in top n% cost
         self.count_attempts = 0  # Attempts to create a mutant
         self.count_splices = 0  # How many times did we create a valid splice
         self.count_mutants = 0  # Total mutants created by any means (includes splices)
@@ -292,22 +297,39 @@ class Search:
         self.input_handler.close_connection()
         self.input_handler.open_connection()
         assert self.input_handler.is_connected()
-        #  We will keep inputs whose cost was within 10% of max,
-        #  in addition to those that achieve coverage or new max on edge.
-        total_cost_cut = int(0.9 * self.max_cost)  # TODO: Move to config constants
-        max_hot_cut = int(0.9 * self.max_hot)
         # Start a new frontier
         old_seeds = self.frontier.elements
         self.frontier = self.frontier_class()
+        #  We will keep inputs whose cost was within N%
+        #  of max on frontier (more selective than top N% of all seen)
+        cost_digest = TDigest()
+        for el in old_seeds:
+            cost_digest.update(el.cost)
+        cost_cut = cost_digest.percentile(conf.RETAIN_COST_PCNT)
         # Retain just the good ones
         while old_seeds:
             candidate = old_seeds.pop()
-            basis = candidate.select()  # from DTreeNode to derivation
-            tot_cost, new_bytes, new_max, hot_spot = self.input_handler.run_input(str(basis))
-            if (tot_cost > total_cost_cut
-                or hot_spot > max_hot_cut
-                or new_max or new_bytes):
+            if candidate.cost > cost_cut:
+                # No need to re-run, we will definitely retain this
+                # BUT note we will not have a record of its coverage, so
+                # we might have some redundant inputs unnecessarily added.
                 self.frontier.append(candidate)
+            else:
+                basis = candidate.root  # from DTreeNode to derivation
+                tot_cost, new_bytes, new_max, hot_spot = self.input_handler.run_input(str(basis))
+                if (new_max or new_bytes):
+                    self.frontier.append(candidate)
+
+        if conf.WINNOW_CHUNKS:
+            # Discard old chunk store, start mutating on
+            # store with just subrees retained in winnowing.
+            # TODO:  Is it a bad idea to discard old scores from subtrees?
+            log.info("Winnowing subtree stash")
+            self.mutator = mutator.Mutator()
+            for retained in self.frontier.elements:
+                tree = retained.root
+                self.mutator.stash(tree)
+
         log.info(f"Winnowed to {len(self.frontier)} inputs")
         self.winnow_trigger = max(conf.WINNOW_TRIGGER_SIZE,
                                   int(conf.WINNOW_TRIGGER_GROW * len(self.frontier)))
@@ -344,6 +366,7 @@ class Search:
             {self.count_hnb} ({percent(self.count_hnb, self.count_valid)}%) occurrences new coverage (AFL bucketed criterion)
             {self.count_hnm} ({percent(self.count_hnm, self.count_valid)}%) occurrences new max count on an edge (AFL mod in TreeLine and PerfFuzz)
             {self.count_hnc} ({percent(self.count_hnc, self.count_valid)}%) occurrences new max of edges executed (measure of execution cost)
+            {self.count_quant} ({percent(self.count_quant, self.count_valid)}%) retained for being relatively costly
             ---
             {self.count_attempts} attempts to generate a mutant
             {self.count_splices} ({percent(self.count_splices, self.count_mutants)}%) spliced hybrids  
@@ -424,11 +447,16 @@ class Search:
                 self.stale.record(str(mutant))
 
                 tot_cost, new_bytes, new_max, hot_spot = self.input_handler.run_input(str(mutant))
-                log.debug(f"cost: {tot_cost}  new_bytes: {new_bytes} new_max: {new_max}  hot_spot: {hot_spot}")
+                quantile_digest.update(tot_cost)
+                quantile = quantile_digest.cdf(tot_cost)
+                parent_quantile = quantile_digest.cdf(candidate.cost)
+                gain = (quantile - parent_quantile)/max((1 - parent_quantile), 0.5)
+                log.debug(f"cost: {tot_cost} ({quantile})  new_bytes: {new_bytes} new_max: {new_max}  hot_spot: {hot_spot}")
                 ##
                 # Any reason to record this mutant at all?
                 if not (tot_cost > self.max_cost
                         or hot_spot > self.max_hot
+                        or gain > conf.BETTER_ENOUGH
                         or new_max or new_bytes):
                     candidate.fail()
                     continue
@@ -444,11 +472,16 @@ class Search:
                     suffix += "+cost"
                     candidate.succeed(Success.COST)
                 elif hot_spot > self.max_hot:
+                    # TODO:  Add hs:{hot_spot} to file name
                     log.info(f"New hot spot {hot_spot} for '{mutant}'")
                     self.max_hot = hot_spot
                     self.count_hnm += 1
                     suffix += "+max"
                     candidate.succeed(Success.HOT)
+                elif gain > conf.BETTER_ENOUGH:
+                    log.info(f"Relatively costly: {tot_cost} ({gain:.2} gain)")
+                    self.count_quant += 1
+                    suffix = "+quant"
                 elif new_max or new_bytes:
                     log.info(f"New coverage or edge max for '{mutant}'")
                     self.count_hnb += 1

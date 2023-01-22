@@ -1,5 +1,5 @@
 """Search configuration parameters.  This is the
-"high level" configuration, where we can include strategies
+"high level" configuration, where we can include frontier_strategies
 that must have visibility into search.py to pick components
 (and which is therefore not imported into search.py),
 as incorporates the lower level configuration which is

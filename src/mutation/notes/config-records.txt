@@ -1,0 +1,44 @@
+Current (old) configuration dump looks like this:
+
+Config: C (exploration variable)= 1.5
+Config: E (# of visits before expansion)= 20
+Config: Lock fully observed nodes?= True
+Config: Max Reward= 100
+Config: Tail-Len= 25000
+Config: Tree-Dropping-Decay-Rate= 5e-05
+Config: Tree-Dropping-Max-Threshold= 0.9
+Config: Use Bias?= True
+Config: budget= 60
+Config: expr-description= fseAntar
+Config: grammar file= parser-based.txt
+Config: initial hundredth_upper_bound= 100
+Config: reward function= quantile
+Config: search-algorithm= lcc
+Config: target-app= graphviz
+Config: uniqueness tail size= 25000
+Duration-Config: # of iterations= 100000
+Duration-Config: Is Duration based on Time?= True
+Duration-Config: Time allowed in hours= 1
+Env: available mem= 15.366523742675781
+Env: cpu cores= 16
+Env: os= Linux-5.13.0-37-generic-x86_64-with-glibc2.24
+Progress: # total edges= 100737
+Progress: # total expansions= 4457
+Progress: # total rollouts= 194719
+Progress: % expansions/iter(s)= 0.04457
+Progress: % of rollout/iter(s)= 1.94719
+Progress: Tree #1= rollouts=117845, expansions=2711, edges=66130, buffer-size=1243, #-of-iter=120585
+Progress: Tree #2= rollouts=14130, expansions=398, edges=2803, buffer-size=94, #-of-iter=14531
+Progress: Tree #3= rollouts=62744, expansions=1348, edges=31804, buffer-size=552, #-of-iter=64094
+Progress: anam - # of anomalous value= 0
+Progress: anam - observed anomalous value?= False
+Progress: final tail len= 5000
+Results: max cost= 30074718
+Results: max hotspot= 602622
+Time: date= 04/15/2022
+Time: duration(h)= 1.0000027777777778
+Time: duration(m)= 60.000166666666665
+Time: duration(ms)= 3600010
+Time: duration(s)= 3600.01
+Time: time= 20:26:41
+

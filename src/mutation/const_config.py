@@ -13,7 +13,16 @@ HOT_BUF_SIZE = 300 # 50   # Was 300
 # coverage (i.e., superseded by other inputs discovered later)
 
 WINNOW_TRIGGER_SIZE = 1000   # Initially 1000, fairly conservative to avoid overshoot
-WINNOW_TRIGGER_GROW = 1.25   # Lower bound on how much frontier must grow before next winnow
+WINNOW_TRIGGER_GROW = 1.5    # Lower bound on how much frontier must grow before next winnow
+
+WINNOW_CHUNKS = True  # Should we also discard recorded subtrees in the chunk store?
+
+# Quantile gain is (child - parent)/(1 - parent), i.e., how much of
+# the gap has been closed toward top ranking?  Is it better enough?
+BETTER_ENOUGH = 0.35
+# Winnowing, we keep candidates in the top k%, with k expressed
+# as an integer.
+RETAIN_COST_PCNT = 98
 
 
 # Weighting factors for "wins", instead of 1/0
@@ -21,10 +30,8 @@ WINNOW_TRIGGER_GROW = 1.25   # Lower bound on how much frontier must grow before
 WEIGHT_NEWCOV = 1.0
 WEIGHT_NEWMAX = 5.0
 WEIGHT_NEWCOST = 10.0
-WEIGHT_QUANTILE = 3.0 # In the top quantile
 
-# What is "nearly top cost"?
-# We'll start with top 5th percentile
-QUANTILE = 0.05
+
+
 
 

@@ -7,7 +7,7 @@ we make it easier to apply mutations by rewriting selected subtrees,
 and thereby come close to a re-implementation of the approach embodied
 in the Nautilus tool.
 """
-import context
+
 import gramm.grammar as grammar
 import gramm.llparse
 

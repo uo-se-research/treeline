@@ -1,0 +1,7 @@
+FUZZ_SERVER:  "localhost"
+FUZZ_PORT: 2300
+FRONTIER: SimpleFrontier
+length: 60
+seconds: 60
+runs: 1
+
