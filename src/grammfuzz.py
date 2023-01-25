@@ -127,6 +127,17 @@ def main():
         if report_to_slack:
             slack_message(f"Run #{run_id} finished!")
             slack_command(search.report())
+        record_path = logdir.parent.joinpath("report.txt")
+        record = open(record_path, 'w')
+        print(searcher.report(), file=record)
+        record.close()
+        settings_path = logdir.parent.joinpath("settings.yaml")
+        settings_record = open(settings_path, 'w')
+        print(settings.dump_yaml(), file=settings_record)
+        settings_record.close()
+
+
+
 
 
 if __name__ == "__main__":

@@ -7,6 +7,8 @@ import inspect
 import os
 import pathlib
 
+import yaml
+
 from mutation.settings import Settings
 import mutation.search
 
@@ -34,7 +36,7 @@ def configure() -> Settings:
     # Command line arguments override settings file
     for arg in ["app", "grammar", "directory",
                 "length", "tokens", "runs",
-                "slack", "search"]:
+                "slack", "search", "seconds"]:
         if cli_args.__getattribute__(arg):
             config[arg] = cli_args.__getattribute__(arg)
 
@@ -73,9 +75,22 @@ def cli() -> object:
                         type=argparse.FileType("r"), nargs="?")
     return parser.parse_args()
 
+def class_representer(dumper, data) -> str:
+    """Experimental: Translate frontier classes back to string designations"""
+    if data is mutation.search.SimpleFrontier:
+        return "SimpleFrontier"
+    elif data is mutation.search.WeightedFrontier:
+        return "WeightedFrontier"
+    else:
+        return f"Class {data}"
+
+
+
 def main():
     """Dummy main to check the behavior of configuation"""
     config = configure()
+    log.debug(f"config['FRONTIER'] is {config['FRONTIER']}, type {type(config['FRONTIER'])}")
+    yaml.add_representer(type(config["FRONTIER"]), class_representer)
     print(config.dump_yaml())
 
 if __name__ == "__main__":

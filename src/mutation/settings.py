@@ -19,6 +19,7 @@ class Settings:
     """Basically a key-value store, with a few bells and whistles."""
     def __init__(self):
         self.values = { }
+        self.conversions: dict[str, dict[str, object]] = { }
 
     # Make it look like a dict, not like an object, to
     # avoid infinite recursion on getattribute (because of access to self.values,
@@ -36,7 +37,18 @@ class Settings:
             self.values[key] = value
 
     def dump_yaml(self) -> str:
-        return yaml.dump(self.values, Dumper=Dumper)
+        dumpable = self.values
+        for convertable, subs in self.conversions.items():
+            if convertable in dumpable:
+                internal = dumpable[convertable]
+                # Linear search because internal value may not be hashable
+                for named_value, internal_value in subs.items():
+                    if internal_value is internal:
+                        dumpable[convertable] = named_value
+                        break
+            else:
+                log.warning(f"Didn't find a value to convert for named value {convertable}")
+        return yaml.dump(dumpable, Dumper=Dumper)
 
     def substitute(self, substitutions: dict[str, dict[str, object]]):
         """Substitute named values, one of which must be present.
@@ -44,14 +56,21 @@ class Settings:
         substitute v1 for s1 in attribute k,
         substitute v2 for s2 in attribute k,
         error if value of 'k' is not among those named values.
+        Stashed in self.conversions for reverse conversion on output.
         """
+        # For parsed values
         for attr, subs in substitutions.items():
             assert attr in self.values, f"Can't substitute for {attr}, not present in settings"
             value_name = self.values[attr]
             assert value_name in subs, f"{value_name} is not a known name for a {attr} value"
             self.values[attr] = subs[value_name]
+        # For dumping values, we save each substitution for reversal
+        for attr, subs in substitutions.items():
+            self.conversions[attr] = subs
 
-    def convert(self, conversions: dict[str, callable]):
-        for name, conversion in conversions.items:
-            raw_value = self.values[name]
-            self.values[name] = conversion[raw_value]
+
+    #
+    # def convert(self, conversions: dict[str, callable]):
+    #     for name, conversion in conversions.items:
+    #         raw_value = self.values[name]
+    #         self.values[name] = conversion[raw_value]

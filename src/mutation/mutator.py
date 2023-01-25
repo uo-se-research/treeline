@@ -8,8 +8,8 @@ December 2022:  Refactoring to separate identification of potential mutations or
   put in one place where we can measure and calibrate.
 """
 
-import src.mutation.gen_tree  as gen_tree
-import src.mutation.chunk_store as chunk_store
+import mutation.gen_tree  as gen_tree
+import mutation.chunk_store as chunk_store
 
 import random
 from typing import Optional
