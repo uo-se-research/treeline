@@ -36,18 +36,25 @@ class Settings:
         for key, value in data.items():
             self.values[key] = value
 
+    def string_val(self, key: str) -> str:
+        """Return string form of a field that has been substituted"""
+        assert key in self.values
+        if key not in self.conversions:
+            return str(self.values[key])
+        # It should be among the conversions, which we must search
+        # sequentially since the value may not be hashable
+        internal_value = self.values[key]
+        for named_value, conversion in self.conversions[key]:
+            if internal_value is conversion:
+                return named_value
+        else:
+            raise ValueError(f"Could not back-translate internal value for setting {key}")
+
     def dump_yaml(self) -> str:
         dumpable = self.values
-        for convertable, subs in self.conversions.items():
+        for convertable in self.conversions:
             if convertable in dumpable:
-                internal = dumpable[convertable]
-                # Linear search because internal value may not be hashable
-                for named_value, internal_value in subs.items():
-                    if internal_value is internal:
-                        dumpable[convertable] = named_value
-                        break
-            else:
-                log.warning(f"Didn't find a value to convert for named value {convertable}")
+                dumpable[convertable] = self.string_val(convertable)
         return yaml.dump(dumpable, Dumper=Dumper)
 
     def substitute(self, substitutions: dict[str, dict[str, object]]):
@@ -67,10 +74,3 @@ class Settings:
         # For dumping values, we save each substitution for reversal
         for attr, subs in substitutions.items():
             self.conversions[attr] = subs
-
-
-    #
-    # def convert(self, conversions: dict[str, callable]):
-    #     for name, conversion in conversions.items:
-    #         raw_value = self.values[name]
-    #         self.values[name] = conversion[raw_value]

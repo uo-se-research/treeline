@@ -55,24 +55,23 @@ def cli() -> object:
                         help="Application name, e.g., graphviz")
     parser.add_argument("grammar", type=str,
                         help="Path to grammar file")
-    parser.add_argument("directory", type=str,
+    parser.add_argument("--directory", type=str,
                         help="Root directory for experiment results")
-    parser.add_argument("--length", type=int, default=60,
+    parser.add_argument("--length", type=int,
                         help="Upper bound on generated sentence length")
-    parser.add_argument("--seconds", type=int, default=60 * 60,
+    parser.add_argument("--seconds", type=int,
                         help="Timeout in seconds, default 3600 (60 minutes)")
     parser.add_argument("--tokens", help="Limit by token count",
                         action="store_true")
-    parser.add_argument("--runs", type=int, default=1,
+    parser.add_argument("--runs", type=int,
                         help="How many times we should run the same experiment?")
     parser.add_argument("--slack", help="Report experiment to Slack",
                         action="store_true")
-    parser.add_argument("--search", type=str,
+    parser.add_argument("--search",
                         help="bfs (breadth-first) or mcw (monte-carlo weighted)",
-                        required=True,
                         choices = ["bfs", "mcw"])
     parser.add_argument("--config", help="Base configuration file",
-                        type=argparse.FileType("r"), nargs="?")
+                        type=argparse.FileType("r"))
     return parser.parse_args()
 
 def class_representer(dumper, data) -> str:

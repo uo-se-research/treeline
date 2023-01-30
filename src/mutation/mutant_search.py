@@ -38,14 +38,14 @@ import datetime
 import time
 import pathlib
 import os
-import math
+
 
 from typing import Optional
 
 import gramm.llparse
 from gramm.char_classes import CharClasses
 from gramm.unit_productions import UnitProductions
-import mutation.search_config as search_config
+# import mutation.search_config as search_config
 import mutation.search as search
 
 from targetAppConnect import InputHandler    # REAL
@@ -64,7 +64,6 @@ logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-import argparse
 
 SEP = ":"   # For Linux.  In MacOS you may need another character (or maybe not)
 
@@ -76,32 +75,6 @@ def ready_grammar(f) -> gramm.grammar.Grammar:
     xform = CharClasses(gram)
     xform.transform_all_rhs(gram)
     return gram
-
-
-def cli() -> object:
-    """Command line interface, including information for logging"""
-    parser = argparse.ArgumentParser(description="Mutating and splicing derivation trees")
-    parser.add_argument("app", type=str,
-                        help="Application name, e.g., graphviz")
-    parser.add_argument("grammar", type=str,
-                        help="Path to grammar file")
-    parser.add_argument("directory", type=str,
-                        help="Root directory for experiment results")
-    parser.add_argument("--length", type=int, default=60,
-                        help="Upper bound on generated sentence length")
-    parser.add_argument("--seconds", type=int, default=60 * 60,
-                        help="Timeout in seconds, default 3600 (60 minutes)")
-    parser.add_argument("--tokens", help="Limit by token count",
-                        action="store_true")
-    parser.add_argument("--runs", type=int, default=1,
-                        help="How many times we should run the same experiment?")
-    parser.add_argument("--slack", help="Report experiment to Slack",
-                        action="store_true")
-    parser.add_argument("--search", type=str,
-                        help="bfs (breadth-first) or mcw (monte-carlo weighted)",
-                        required=True,
-                        choices = ["bfs", "mcw"])
-    return parser.parse_args()
 
 
 def create_result_directory(root: str, app: str, gram_name: str) -> pathlib.Path:
@@ -125,40 +98,6 @@ def slack_message(m: str):
 
 def slack_command(c: str):
     slack.post_message_to_slack(f"```\n{c}\n```")
-
-
-def main():
-    args = cli()
-    length_limit: int = args.length
-    gram_path = pathlib.Path(args.grammar)
-    gram_name = gram_path.name
-    gram = ready_grammar(open(args.grammar, "r"))
-    timeout_ms = args.seconds * 1000
-    number_of_exper = int(args.runs)
-    report_to_slack = bool(args.slack)
-    search_strategy = args.search
-    log.info(f"Experiment {args.seconds} seconds with {args.search}")
-    for run_id in range(1, number_of_exper+1):
-        logdir = create_result_directory(args.directory, args.app, gram_name)
-        if report_to_slack:
-            slack_message(f"New mutant run #{run_id} out of {number_of_exper}.")
-            slack_message(f"Configs: length=`{length_limit}`, gram_path=`{gram_path}`, gram_name=`{gram_name}`, "
-                          f"duration(s)=`{args.seconds}`, logdir=`{logdir}`, tokens=`{args.tokens}`",
-                          f"strategy {args.search}")
-        search_config.init(strategy=search_strategy)
-        searcher = search.Search(gram, logdir,
-                                 InputHandler(search_config.FUZZ_SERVER, search_config.FUZZ_PORT),
-                                 frontier=search_config.FRONTIER
-                                 )
-        searcher.search(length_limit, timeout_ms)
-        searcher.summarize(length_limit, timeout_ms)
-        if report_to_slack:
-            slack_message(f"Run #{run_id} finished!")
-            slack_command(search.report())
-
-
-if __name__ == "__main__":
-    main()
 
 
 

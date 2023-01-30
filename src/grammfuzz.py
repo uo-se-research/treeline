@@ -42,7 +42,7 @@ import grammfuzz_configure
 import gramm.llparse
 from gramm.char_classes import CharClasses
 from gramm.unit_productions import UnitProductions
-import mutation.search_config as search_config
+# import mutation.search_config as search_config
 import mutation.search as search
 
 from targetAppConnect import InputHandler    # REAL
@@ -101,13 +101,13 @@ def main():
     settings = grammfuzz_configure.configure()
     length_limit: int = settings["length"]
     gram_path = pathlib.Path(settings["grammar"])
-    gram_name = gram_path.name
+    gram_name = settings["gram_name"]
     gram = ready_grammar(open(gram_path, "r"))
     seconds = int(settings["seconds"])
     timeout_ms = seconds * 1000
     number_of_exper = int(settings["runs"])
     report_to_slack = bool(settings["slack"])
-    search_strategy = settings["search"]
+    search_strategy = settings["FRONTIER"]
     log.info(f"Experiment {seconds} seconds with {settings['search']}")
     for run_id in range(1, number_of_exper+1):
         logdir = create_result_directory(settings['directory'],
@@ -115,12 +115,12 @@ def main():
         if report_to_slack:
             slack_message(f"New mutant run #{run_id} out of {number_of_exper}.")
             slack_message(f"Configs: length=`{length_limit}`, gram_path=`{gram_path}`, gram_name=`{gram_name}`, "
-                          f"duration(s)=`{args.seconds}`, logdir=`{logdir}`, tokens=`{args.tokens}`",
-                          f"strategy {settings['search']}")
-        search_config.init(strategy=search_strategy)
+                          f"duration(s)=`{settings['seconds']}`, logdir=`{settings['']}`, tokens=`{settings['tokens']}`",
+                          f"strategy {settings.string_val('search')}")
         searcher = search.Search(gram, logdir,
-                                 InputHandler(search_config.FUZZ_SERVER, search_config.FUZZ_PORT),
-                                 frontier=search_config.FRONTIER
+                                 InputHandler(settings['FUZZ_SERVER'],
+                                              settings['FUZZ_PORT']),
+                                 frontier=settings['FRONTIER']
                                  )
         searcher.search(length_limit, timeout_ms)
         searcher.summarize(length_limit, timeout_ms)
