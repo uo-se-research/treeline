@@ -100,7 +100,7 @@ def slack_command(c: str):
 def main():
     settings = grammfuzz_configure.configure()
     length_limit: int = settings["length"]
-    gram_path = pathlib.Path(settings["grammar"])
+    gram_path = pathlib.Path(settings["gram_file"])
     gram_name = settings["gram_name"]
     gram = ready_grammar(open(gram_path, "r"))
     seconds = int(settings["seconds"])

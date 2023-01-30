@@ -34,7 +34,7 @@ def configure() -> Settings:
     else:
         config.read_yaml(cli_args.config)
     # Command line arguments override settings file
-    for arg in ["app", "grammar", "directory",
+    for arg in ["app_name", "gram_name", "gram_file", "directory",
                 "length", "tokens", "runs",
                 "slack", "search", "seconds"]:
         if cli_args.__getattribute__(arg):
@@ -51,10 +51,12 @@ def configure() -> Settings:
 def cli() -> object:
     """Command line interface, including information for logging"""
     parser = argparse.ArgumentParser(description="Mutating and splicing derivation trees")
-    parser.add_argument("app", type=str,
+    parser.add_argument("--app_name", type=str,
                         help="Application name, e.g., graphviz")
-    parser.add_argument("grammar", type=str,
-                        help="Path to grammar file")
+    parser.add_argument("--gram_name", type=str,
+                        help="Name of grammar (abbreviated)")
+    parser.add_argument("--gram_file", type=str,
+                        help="Path to file containing grammar")
     parser.add_argument("--directory", type=str,
                         help="Root directory for experiment results")
     parser.add_argument("--length", type=int,
