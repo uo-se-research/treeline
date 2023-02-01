@@ -13,6 +13,7 @@ import mutation.gen_tree as gen_tree
 import gramm.grammar
 from mutation.dup_checker import History
 import mutation.const_config as conf
+from mutation.settings import  Settings
 from targetAppConnect import InputHandler
 
 

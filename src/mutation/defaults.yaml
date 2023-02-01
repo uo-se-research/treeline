@@ -2,7 +2,7 @@ FUZZ_SERVER:  "localhost"
 FUZZ_PORT: 2300
 #  Note that we do not configure the server here --- it must be set up separately
 #  on the FUZZ_SERVER (typically a docker container) running the instrumented application
-FRONTIER: "SimpleFrontier"
+FRONTIER: "WeightedFrontier"
 directory: "/tmp/gramfuzz"  # Records subdirectory will be created here
 app_name: "graphviz"      # Used to label runs for a particular app
 gram_name: "parser-based" # Used to label runs (part of directory name)
@@ -11,3 +11,8 @@ length: 60         # Bound on generated input length
 seconds: 60        # Run the experiment this long  (60= 1 minute trial, 3600= 1 hour experiment)
 runs: 1            # Possible repetitions
 tokens: False      # Count tokens rather than characters.  Better but not a fair comparison.
+#
+# Monte Carlo parameters
+#
+WEIGHT_EXPLORE: 3.0  # Usually denoted "C" in UCT formula, exploration vs exploitation
+
