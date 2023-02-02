@@ -122,7 +122,7 @@ def main():
         if report_to_slack:
             slack.message(f"Run #{run_id} finished!")
             slack.command(searcher.brief_report())
-            slack.post_file_to_slack(message="Full Report", file_name=os.path.basename(searcher.logdir),
+            slack.post_file_to_slack(message="Full Report", file_name=os.path.basename(logdir.parent),
                                      content=searcher.full_report())
         record_path = logdir.parent.joinpath("report.txt")
         record = open(record_path, 'w')
@@ -134,12 +134,5 @@ def main():
         settings_record.close()
 
 
-
-
-
 if __name__ == "__main__":
     main()
-
-
-
-
