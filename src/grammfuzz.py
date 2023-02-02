@@ -118,8 +118,8 @@ def main():
         if report_to_slack:
             slack_message(f"New mutant run #{run_id} out of {number_of_exper}.")
             slack_message(f"Configs: length=`{length_limit}`, gram_path=`{gram_path}`, gram_name=`{gram_name}`, "
-                          f"duration(s)=`{settings['seconds']}`, logdir=`{settings['']}`, tokens=`{settings['tokens']}`",
-                          f"strategy {settings.string_val('search')}")
+                          f"duration(s)=`{settings['seconds']}`, logdir=`{settings['']}`, "
+                          f"tokens=`{settings['tokens']}`, frontier=`{settings.string_val('FRONTIER')}`")
         searcher = search.Search(gram, logdir,
                                  InputHandler(settings['FUZZ_SERVER'],
                                               settings['FUZZ_PORT']),
