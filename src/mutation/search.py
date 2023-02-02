@@ -501,7 +501,7 @@ class Search:
                 found_time_ms = time_ms()
                 elapsed_time_ms = found_time_ms - search_started_ms
                 label = (f"id{SEP}{self.count_kept:08}-cost{SEP}{tot_cost:010}-exec{SEP}{self.count_valid:08}"
-                         f"-hot{SEP}{hot_spot}"
+                         f"-hs{SEP}{hot_spot}"
                          f"-crtime{SEP}{found_time_ms}-dur{SEP}{elapsed_time_ms}{suffix}")
                 result_path = self.logdir.joinpath(label)
                 with open(result_path, "w") as saved_input:
