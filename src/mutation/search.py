@@ -12,8 +12,8 @@ import mutation.mutator  as mutator
 import mutation.gen_tree as gen_tree
 import gramm.grammar
 from mutation.dup_checker import History
-import mutation.const_config as conf
-from mutation.settings import  Settings
+# import mutation.const_config as conf
+from  mutation.settings import Settings
 from targetAppConnect import InputHandler
 
 
@@ -21,6 +21,11 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
+CONFIG: Optional[Settings] = None
+def init(search_settings: Settings):
+    global CONFIG
+    CONFIG = search_settings["MONTE"]
 
 def time_ms() -> int:
     """Current time in ms"""
@@ -46,7 +51,7 @@ def get_serial() -> int:
 # for scoring without passing it from Search
 quantile_digest = TDigest()
 
-def percent(portion: int, total: int) -> int:
+def percent(portion: int, total: int) -> float:
     """Fraction as a percentage, rounded"""
     frac = portion / total
     return round(100 * frac, 1)
@@ -92,12 +97,12 @@ class Candidate(Scorable):
         successes or failures.
         """
         if reason == Success.COST:
-            value = conf.WEIGHT_NEWCOST
+            value = CONFIG["WEIGHT_NEWCOST"]
         elif reason == Success.HOT:
-            value = conf.WEIGHT_NEWMAX
+            value = CONFIG["WEIGHT_NEWMAX"]
         else:
             assert reason == Success.COV
-            value = conf.WEIGHT_NEWCOV
+            value = CONFIG["WEIGHT_NEWCOV"]
         # Non-propagating
         self.count_successful_direct += value
         self.count_selections_direct += 1
@@ -140,7 +145,7 @@ class Candidate(Scorable):
         # because of content of chunkstore).
         parent_explored = math.log(self.parent.count_selections)
         explore = math.sqrt(parent_explored / self.count_selections_direct)
-        return exploit + conf.C * explore
+        return exploit + CONFIG["WEIGHT_EXPLORE"] * explore
 
     def __str__(self):
         if self.parent:
@@ -219,7 +224,7 @@ class WeightedFrontier:
         """
         # Experiment: Focus much more on hottest elements
         log.debug(f"First element scores: {self.first_scores(self.elements)}")
-        eligible = sorted(self.elements, key=lambda e: 0.0 - e.score())[:conf.HOT_BUF_SIZE]
+        eligible = sorted(self.elements, key=lambda e: 0.0 - e.score())[:CONFIG["HOT_BUF_SIZE"]]
         log.debug(f"Selected first element scores: {self.first_scores(eligible)}")
         sampler = Sampler(eligible)
         draw_limit = len(eligible)
@@ -276,7 +281,7 @@ class Search:
         self.count_splice_progress = 0  # How many spliced mutants resulted in progress
         self.count_expand_progress = 0  # How many newly expanded mutants resulted in progress
         self.sweeps = 0  # How many times have we sweeped the frontier, incremented by search method
-        self.winnow_trigger = conf.WINNOW_TRIGGER_SIZE
+        self.winnow_trigger = CONFIG["WINNOW_TRIGGER_SIZE"]
 
     # Winnowing is similar to the way Nautilus prunes its seed set, but
     # whereas Nautilus has _only_ coverage information for deciding which
@@ -306,7 +311,7 @@ class Search:
         cost_digest = TDigest()
         for el in old_seeds:
             cost_digest.update(el.cost)
-        cost_cut = cost_digest.percentile(conf.RETAIN_COST_PCNT)
+        cost_cut = cost_digest.percentile(CONFIG["RETAIN_COST_PCNT"])
         # Retain just the good ones
         while old_seeds:
             candidate = old_seeds.pop()
@@ -321,7 +326,7 @@ class Search:
                 if (new_max or new_bytes):
                     self.frontier.append(candidate)
 
-        if conf.WINNOW_CHUNKS:
+        if CONFIG["WINNOW_CHUNKS"]:
             # Discard old chunk store, start mutating on
             # store with just subrees retained in winnowing.
             # TODO:  Is it a bad idea to discard old scores from subtrees?
@@ -332,8 +337,9 @@ class Search:
                 self.mutator.stash(tree)
 
         log.info(f"Winnowed to {len(self.frontier)} inputs")
-        self.winnow_trigger = max(conf.WINNOW_TRIGGER_SIZE,
-                                  int(conf.WINNOW_TRIGGER_GROW * len(self.frontier)))
+        self.winnow_trigger = (
+            max(CONFIG["WINNOW_TRIGGER_SIZE"],
+                int(CONFIG["WINNOW_TRIGGER_GROW"]) * len(self.frontier)))
 
     def summarize(self, length_limit: int, time_limit_ms: int):
         """Print summary stats.  Used in finding good settings for default
@@ -457,7 +463,7 @@ class Search:
                 # Any reason to record this mutant at all?
                 if not (tot_cost > self.max_cost
                         or hot_spot > self.max_hot
-                        or gain > conf.BETTER_ENOUGH
+                        or gain > CONFIG["BETTER_ENOUGH"]
                         or new_max or new_bytes):
                     candidate.fail()
                     continue
@@ -479,7 +485,7 @@ class Search:
                     self.count_hnm += 1
                     suffix += "+max"
                     candidate.succeed(Success.HOT)
-                elif gain > conf.BETTER_ENOUGH:
+                elif gain > CONFIG["BETTER_ENOUGH"]:
                     log.info(f"Relatively costly: {tot_cost} ({gain:.2} gain)")
                     self.count_quant += 1
                     suffix = "+quant"
@@ -495,7 +501,8 @@ class Search:
                 found_time_ms = time_ms()
                 elapsed_time_ms = found_time_ms - search_started_ms
                 label = (f"id{SEP}{self.count_kept:08}-cost{SEP}{tot_cost:010}-exec{SEP}{self.count_valid:08}"
-                         + f"-crtime{SEP}{found_time_ms}-dur{SEP}{elapsed_time_ms}{suffix}")
+                         f"-hot{SEP}{hot_spot}"
+                         f"-crtime{SEP}{found_time_ms}-dur{SEP}{elapsed_time_ms}{suffix}")
                 result_path = self.logdir.joinpath(label)
                 with open(result_path, "w") as saved_input:
                     print(str(mutant), file=saved_input)

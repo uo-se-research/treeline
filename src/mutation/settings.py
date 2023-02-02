@@ -44,7 +44,7 @@ class Settings:
         # It should be among the conversions, which we must search
         # sequentially since the value may not be hashable
         internal_value = self.values[key]
-        for named_value, conversion in self.conversions[key]:
+        for named_value, conversion in self.conversions[key].items():
             if internal_value is conversion:
                 return named_value
         else:

@@ -8,11 +8,33 @@ app_name: "graphviz"      # Used to label runs for a particular app
 gram_name: "parser-based" # Used to label runs (part of directory name)
 gram_file: "../target_apps/graphviz/grammars/parser-based.txt"
 length: 60         # Bound on generated input length
-seconds: 60        # Run the experiment this long  (60= 1 minute trial, 3600= 1 hour experiment)
+seconds: 10
+# Run the experiment this long  (60= 1 minute trial, 3600= 1 hour experiment)
 runs: 1            # Possible repetitions
 tokens: False      # Count tokens rather than characters.  Better but not a fair comparison.
 #
-# Monte Carlo parameters
+# Search parameters (previously in const_config.py)
 #
-WEIGHT_EXPLORE: 3.0  # Usually denoted "C" in UCT formula, exploration vs exploitation
+MONTE:
+  HOT_BUF_SIZE: 1000   # Size of pool for weighted sampling
+  WEIGHT_EXPLORE: 3.0  # Usually denoted "C" in UCT formula, exploration vs exploitation
+  # Weighting factors for "wins", instead of 1/0
+  #
+  WEIGHT_NEWCOV:  1.0
+  WEIGHT_NEWMAX:  5.0
+  WEIGHT_NEWCOST: 10.0
+  #  Winnowing: Occasionally discard frontier nodes whose only claim for belonging
+  #  was new coverage, if other frontier nodes now provide that coverage
+  #  (Nautilus also does this, albeit without exceptions for costly nodes)
+  WINNOW_TRIGGER_SIZE: 1000   # Prune the frontier initially when it reaches this size
+  WINNOW_TRIGGER_GROW: 1.5    # Lower bound on how much frontier must grow before next winnow
+  # We keep candidates in the top k% of cost, with k expressed
+  # as an integer. (Obviously Nautilus does not do this.)
+  RETAIN_COST_PCNT:  98
+  WINNOW_CHUNKS: True         # Also flush the chunk store when we winnow?
+  # Quantile gain is (child - parent)/(1 - parent), i.e., how much of
+  # the gap has been closed toward top ranking?  Is it better enough?
+  BETTER_ENOUGH: 0.35
+
+
 

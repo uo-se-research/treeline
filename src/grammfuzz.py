@@ -40,6 +40,7 @@ import os
 import grammfuzz_configure
 
 import gramm.llparse
+import mutation.search
 from gramm.char_classes import CharClasses
 from gramm.unit_productions import UnitProductions
 # import mutation.search_config as search_config
@@ -99,9 +100,11 @@ def slack_command(c: str):
 
 def main():
     settings = grammfuzz_configure.configure()
+    mutation.search.init(settings)
     length_limit: int = settings["length"]
     gram_path = pathlib.Path(settings["gram_file"])
     gram_name = settings["gram_name"]
+    app_name = settings["app_name"]
     gram = ready_grammar(open(gram_path, "r"))
     seconds = int(settings["seconds"])
     timeout_ms = seconds * 1000
@@ -111,7 +114,7 @@ def main():
     log.info(f"Experiment {seconds} seconds with {settings['search']}")
     for run_id in range(1, number_of_exper+1):
         logdir = create_result_directory(settings['directory'],
-                                         settings['app'], gram_name)
+                                         app_name, gram_name)
         if report_to_slack:
             slack_message(f"New mutant run #{run_id} out of {number_of_exper}.")
             slack_message(f"Configs: length=`{length_limit}`, gram_path=`{gram_path}`, gram_name=`{gram_name}`, "
