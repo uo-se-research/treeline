@@ -61,7 +61,7 @@ def post_message_to_slack(text: str):
     """
     response = requests.post('https://slack.com/api/chat.postMessage',
                              {'token': slack_token,
-                              'channel': slack_channel,
+                              'channel': f"#{slack_channel}",
                               'text': f"*{HOST}:* {text}",
                               }).json()
 
@@ -83,7 +83,7 @@ def post_file_to_slack(message: str, file_name: str, content: str, file_type="te
     response = requests.post('https://slack.com/api/files.upload',
                              {'token': slack_token,
                               'filename': file_name,
-                              'channels': slack_channel,
+                              'channel': f"#{slack_channel}",
                               'filetype': file_type,
                               'initial_comment': f"*{HOST}:* {message}"
                               },
