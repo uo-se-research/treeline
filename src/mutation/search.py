@@ -357,13 +357,8 @@ class Search:
             Write a brief report to string. Think of it in the context of slack.
             Slack usually does not like very long messages. Thus, capture essential information here.
         """
-        summary = "====\nPedigree of top 5 by cost\n"
-        by_cost = sorted(self.frontier.elements, key=lambda e: 0 - e.cost)
-        for i in range(min(5, len(by_cost))):
-            summary += by_cost[i].pedigree()
-            summary += "\n====\n"
         random_gens = self.count_mutants - self.count_splices
-        summary += f"""
+        summary = f"""
                     *** Summary of search ***
 
                     Results logged to {self.logdir}
@@ -395,7 +390,12 @@ class Search:
         Write a complete report to string. Can be used for slack or prints.
         """
         summary = "\n".join([str(e) for e in self.frontier.elements])
-        summary += f"\n{self.brief_report()}"
+        summary += "\n====\nPedigree of top 5 by cost\n"
+        by_cost = sorted(self.frontier.elements, key=lambda e: 0 - e.cost)
+        for i in range(min(5, len(by_cost))):
+            summary += by_cost[i].pedigree()
+            summary += "\n====\n"
+        summary += f"{self.brief_report()}"
 
         return summary
 

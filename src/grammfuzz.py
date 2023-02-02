@@ -90,14 +90,6 @@ def create_result_directory(root: str, app: str, gram_name: str) -> pathlib.Path
     return list_path
 
 
-def slack_message(m: str):
-    slack.post_message_to_slack(f"{m}")
-
-
-def slack_command(c: str):
-    slack.post_message_to_slack(f"```\n{c}\n```")
-
-
 def main():
     settings = grammfuzz_configure.configure()
     mutation.search.init(settings)
@@ -116,8 +108,8 @@ def main():
         logdir = create_result_directory(settings['directory'],
                                          app_name, gram_name)
         if report_to_slack:
-            slack_message(f"New mutant run #{run_id} out of {number_of_exper}.")
-            slack_message(f"Configs: length=`{length_limit}`, gram_path=`{gram_path}`, gram_name=`{gram_name}`, "
+            slack.message(f"New mutant run #{run_id} out of {number_of_exper}.")
+            slack.message(f"Configs: length=`{length_limit}`, gram_path=`{gram_path}`, gram_name=`{gram_name}`, "
                           f"duration(s)=`{settings['seconds']}`, logdir=`{settings['']}`, "
                           f"tokens=`{settings['tokens']}`, frontier=`{settings.string_val('FRONTIER')}`")
         searcher = search.Search(gram, logdir,
@@ -128,8 +120,10 @@ def main():
         searcher.search(length_limit, timeout_ms)
         searcher.summarize(length_limit, timeout_ms)
         if report_to_slack:
-            slack_message(f"Run #{run_id} finished!")
-            slack_command(searcher.brief_report())
+            slack.message(f"Run #{run_id} finished!")
+            slack.command(searcher.brief_report())
+            slack.post_file_to_slack(message="Full Report", file_name=os.path.basename(searcher.logdir),
+                                     content=searcher.full_report())
         record_path = logdir.parent.joinpath("report.txt")
         record = open(record_path, 'w')
         print(searcher.full_report(), file=record)
