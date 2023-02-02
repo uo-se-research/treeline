@@ -388,6 +388,7 @@ class Search:
 
                     """
         # summary += str(self.mutator.seen)
+        return summary
 
     def full_report(self) -> str:
         """
