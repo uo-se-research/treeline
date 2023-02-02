@@ -27,6 +27,9 @@ credentials.ini file under a section named "DEFAULT". Here are the details of th
         links:read, links:write, mpim:history, mpim:read, mpim:write, pins:read, pins:write, reactions:read,
         reactions:write, reminders:read, reminders:write, team:read, usergroups:read, usergroups:write,
         users.profile:read, users:read, users:write]
+
+When in doubt try it externally using curl
+>>> curl -F content="Hello" -F channels=CHANNEL -F filename=test.txt -F token=YOUR-TOKEN  https://slack.com/api/files.upload
 """
 config = configparser.ConfigParser()
 try:
