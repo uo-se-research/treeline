@@ -4,22 +4,25 @@ to CLI and types that are not visible at a low level.
 """
 import io
 import logging
+
+import yaml
+
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
-import yaml
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     logging.info("Using pure Python version of yaml loader")
     from yaml import Loader, Dumper
 
+
 class Settings:
     """Basically a key-value store, with a few bells and whistles."""
     def __init__(self):
-        self.values = { }
-        self.conversions: dict[str, dict[str, object]] = { }
+        self.values = {}
+        self.conversions: dict[str, dict[str, object]] = {}
 
     # Make it look like a dict, not like an object, to
     # avoid infinite recursion on getattribute (because of access to self.values,
@@ -51,7 +54,7 @@ class Settings:
             raise ValueError(f"Could not back-translate internal value for setting {key}")
 
     def dump_yaml(self) -> str:
-        dumpable = self.values
+        dumpable = self.values.copy()
         for convertable in self.conversions:
             if convertable in dumpable:
                 dumpable[convertable] = self.string_val(convertable)
