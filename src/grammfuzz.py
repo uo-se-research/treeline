@@ -129,10 +129,10 @@ def main():
         searcher.summarize(length_limit, timeout_ms)
         if report_to_slack:
             slack_message(f"Run #{run_id} finished!")
-            slack_command(searcher.report())
+            slack_command(searcher.brief_report())
         record_path = logdir.parent.joinpath("report.txt")
         record = open(record_path, 'w')
-        print(searcher.report(), file=record)
+        print(searcher.full_report(), file=record)
         record.close()
         settings_path = logdir.parent.joinpath("settings.yaml")
         settings_record = open(settings_path, 'w')
