@@ -1,11 +1,12 @@
 # TreeLine
 
-<img style="float: left;" src="treeline-logo.png" width=100 alt="TreeLine Logo">
+<img align="left" src="treeline-logo.png" width=100 alt="TreeLine Logo">
 Finding slow input faster using Monte-Carlo Tree Search and application provided context-free grammar. 
 
-This is a testing version of the code TreeLine (the exact code used for experimentation). We are aware that it is not
-user-friendly. However, we wanted to share the code to comply the open-source policy. The repository will change
-after paper submission. We will refactor some of the code and add all the necessary documentation and appendices.
+Given some target application and grammar on how to generate input for it, TreeLine will generate
+high-level inputs that exercise the target application's worst-execution case. TreeLine allows you to
+specify the maximum length of the desired sample inputs (test cases). TreeLine uses the grammar
+provided to build a derivation tree that is sampled following the Monte-Carlo Tree Search technique.
 
 ## Usage:
 
