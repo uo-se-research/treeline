@@ -17,7 +17,7 @@ class Payload(Structure):
     """ This class defines a C-like struct """
     _fields_ = [("exec_cost", c_uint32),  # total execution cost
                 ("hnm", c_bool),  # has new max?
-                ("hs", c_uint32),  # hot spot count. The edge hit the most for this input
+                ("hs", c_uint32),  # hot spot count. The edge got hit the most for this input
                 ("hnb", c_uint32),  # has new bits (coverage)? 0: No, 1: change to a particular tuple only, 2: new tuple
                 ("run_type", c_char * 4),  # actual (nml) or warmup (wup)? Actual runs will change the perf_max values.
                 ("input", c_char * _MAX_INPUT_SIZE)]  # the input itself

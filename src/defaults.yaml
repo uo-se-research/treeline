@@ -1,0 +1,37 @@
+#  Note that we do not configure the server here --- it must be set up separately
+#  on the FUZZ_SERVER (typically a docker container) running the instrumented application
+#  this is just to hopefully fix it one day.
+FUZZ_SERVER:  "localhost"
+FUZZ_PORT: 2300
+
+# App related settings:
+app_name: "graphviz"
+gram_file: ["../target_apps/graphviz/grammars/parser-based.txt"]  # where the grammar you are using is saved. It can be more than one.
+desc: ""  # A task description to identify the run logs if needed.
+
+# hyper-parameters
+c: [1.5] #  The constant value for UCT formula.
+e: [20] #  The number of visit to a node before we expand it.
+budget: [60] #  The allowed budget for an input (aka target app max input size) in bytes.
+reward_type: ['quantile']  # The reward strategy. It can be more than one option ('prc', 'smoothed', 'log', 'binary', 'quantile')
+algorithm: ['treeline'] # Either use 'treeline' alg or 'random'. It can be more than one option.
+use_bias: [True] # use the bias strategy or not. It can be both (each in its own run)
+lock: [True] #  Lock nodes if they get fully explored.
+max_reward: [100] # maximum number of rewards before we check for stability.
+tail_len: [25000] # the length of last number of runs to check for stability.
+max_cutting_threshold: [0.9]  # The stability threshold ( we also tried 0.5)
+threshold_decay_rate: [0.00005]  # Max=0.5, Decay=0.00001 was good for WF
+
+# run configurations
+is_time_based: [True] # Run an experiment based on duration. Otherwise, based on iterations.
+total_iter: [100_000]  # The number of iterations to run in a search assuming it is an iteration based.
+time: [3600] # The duration for the search in seconds. Assuming it is a time based job (default). It can be more than one option.
+log_level: "INFO" # Set the logging level for root logger (choices: 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+log_to_file: True  # Should we log to file or stdout?
+sim: False #  Turn on simulation at the end.
+tree: False #  Print tree at the end of the search.
+report: False #  A flag to add result from this experiment to the report file.
+number_of_repetitions: 1 # how many times should we repeat a given experiment configuration?
+save_tree_as_binary: False # save the  tree as a binary in a .tree file in case we want to load it again
+write_tree_to_file_as_text: False  # print the tree as text to txt file?
+generate_tree_vis: False  # generate a tree vis as PDF?

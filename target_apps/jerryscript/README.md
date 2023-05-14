@@ -69,5 +69,5 @@ We obtained PerfFuzz seeds from the tool repository itself. We looped over all t
 To run the AFL listener on the target application you use a command similar to the one below.
 
 ```bash
-afl-treeline -i /home/treeline/target_apps/jerryscript/inputs -o /home/results/jerryscript-001 -p -t 10000 -N 60 -d /home/treeline/target_apps/jerryscript/src/jerryscript-2.4.0/build/bin/jerry @@
+afl-socket -i /home/treeline/target_apps/jerryscript/inputs -o /home/results/jerryscript-001 -p -t 10000 -N 60 -d /home/treeline/target_apps/jerryscript/src/jerryscript-2.4.0/build/bin/jerry @@
 ```
