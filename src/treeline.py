@@ -200,13 +200,13 @@ if __name__ == "__main__":
             # print the tree to file
             if immutable_params['write_tree_to_file_as_text']:
                 print("Saving tree as text ...")
-                with open(f"{output_dir}Tree.txt", "w") as tree_file:
+                with open(f"{output_dir}/Tree.txt", "w") as tree_file:
                     tree_file.write(mcts.get_tree())
 
             if immutable_params['generate_tree_vis']:
                 print("Rendering the tree based on dot file ...")
                 g = graphviz.Source(helper.tree_to_dot(mcts.root))
-                g.render(filename=f"{output_dir}TreeVis", format="pdf", cleanup=True)
+                g.render(filename=f"{output_dir}/TreeVis", format="pdf", cleanup=True)
 
             # getting dict report and adding high-level info (e.g. date, gram file, etc).
             report = mcts.get_report()
@@ -238,7 +238,7 @@ if __name__ == "__main__":
 
             # write final stats to file
             print("Write high-level stats to file ...")
-            with open(f"{output_dir}config-and-stats-report.txt", "w") as report_file:
+            with open(f"{output_dir}/config-and-stats-report.txt", "w") as report_file:
                 stats_summery = helper.beautify_final_report(report)
                 report_file.write(stats_summery)
 

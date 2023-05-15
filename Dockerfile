@@ -2,6 +2,10 @@ FROM debian:9.8
 
 MAINTAINER Ziyad Alsaeed "zalsaeed@cs.uoregon.edu"
 
+# takes the already configured deb lines and adds them as deb-src ones
+# No longer needed (https://askubuntu.com/a/1212734)
+# RUN grep '^deb ' /etc/apt/sources.list | perl -pe 's/deb /deb-src /' >> /etc/apt/sources.list
+
 # adding the needed sources for the package manager
 COPY resources/sources.list /etc/apt/
 
@@ -41,7 +45,7 @@ RUN apt-get install -y --no-install-recommends \
     texinfo \
     help2man
 
-# installing python3.9.13
+# build & installing python3.9.13
 WORKDIR /opt
 RUN wget https://www.python.org/ftp/python/3.9.13/Python-3.9.13.tgz
 RUN tar xzf Python-3.9.13.tgz
@@ -110,7 +114,7 @@ COPY target_apps /home/treeline/target_apps
 WORKDIR /home/treeline/target_apps
 RUN sh build_targets.sh
 
-# make a result root diroctry (TODO: what is the for?)
+# make a result root diroctry (usually used for perffuzz experiments)
 RUN mkdir /home/results
 
 # change the workdir to /home for convenience

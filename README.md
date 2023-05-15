@@ -3,8 +3,8 @@
 <img align="left" src="treeline-logo.png" width=100 alt="TreeLine Logo">
 Finding slow input faster using Monte-Carlo Tree Search and application provided context-free grammar. 
 
-Given some target application and grammar on how to generate inputs for it, TreeLine will generate
-high-level inputs that exercise the target application's worst-execution case. TreeLine allows you to
+Given some target application and grammar on how to generate inputs for it, _TreeLine_ will generate
+high-level inputs that exercise the target application's worst-execution case. _TreeLine_ allows you to
 specify the maximum length of the desired sample inputs (test cases). It also uses the grammar
 provided to build a derivation tree that is sampled following the Monte-Carlo Tree Search technique.
 
@@ -29,7 +29,7 @@ If the search stall according to different paramters, the algorihtm might even d
 
 By the end of the search the algorithm will have generated many inputs one of which is maximizing the execution cost.
 
-![TreeLine Overview](img/fig-overview.png)
+![TreeLine Overview](img/fig-overview.png "TreeLine High-Level Overview")
 
 ## Usage:
 
@@ -50,10 +50,24 @@ e.g. ,
 afl-socket -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot
 ```
 
-Run [treeline](src/treeline.py) with the configuration you want form your local machine or the `treeline` container itself. 
-```shell
-python3 treeline.py 
-```
+- Run _TreeLine_'s algorithm using either of the following options:
+  - **Option 1**: Run from your local machine
+    
+    Run [treeline](src/treeline.py) with the configuration you want form your local machine. This means that you are
+    responsible for all python's dependencies. 
+    ```shell
+    python3 treeline.py 
+    ```
+  - **Option 2**: Use the same container to run the _TreeLine_
+    
+    Open another bash screen on the same container you have up and running.
+    ```shell
+    docker exec -it treeline /bin/bash
+    ```
+    Then navigate to `/home/treeline/src` and run _TreeLine_ as you would on your local machine. 
+    ```shell
+    python3 treeline.py
+    ```
 
 ## Example Outputs:
 
