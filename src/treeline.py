@@ -163,11 +163,11 @@ if __name__ == "__main__":
             xform.transform_all_rhs(gram)
 
             # print gram info after parsing and adjusting costs
-            with open(f"{output_dir}gram-with-cost.txt", "w") as file:
+            with open(f"{output_dir}/gram-with-cost.txt", "w") as file:
                 file.write(gram.dump())
 
             mcts = MonteCarloTreeSearch(gram=gram,
-                                        output_dir=output_dir,
+                                        output_dir=output_dir + "/",
                                         expr_id=expr_identifier,
                                         budget=budget,
                                         reward_type=reward_type,

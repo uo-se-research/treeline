@@ -3,5 +3,7 @@ sympy
 psutil
 graphviz
 tdigest
+urllib3==1.26.6
+pyyaml
 sphinx
 sphinx_rtd_theme

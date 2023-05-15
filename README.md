@@ -33,7 +33,7 @@ By the end of the search the algorithm will have generated many inputs one of wh
 
 ## Usage:
 
-- Build the Docker image:
+- Build the Docker image (It will take a long time as we build AFL and each target application):
 ```sh
 docker build -t treeline-img:latest .
 ```
@@ -50,7 +50,7 @@ e.g. ,
 afl-socket -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot
 ```
 
-Run [mcts_expr](src/mcts_exper.py) with the configuration you want form your local machine or the `treeline` container itself. 
+Run [treeline](src/treeline.py) with the configuration you want form your local machine or the `treeline` container itself. 
 ```shell
 python3 treeline.py 
 ```

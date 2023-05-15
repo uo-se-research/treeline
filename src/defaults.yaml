@@ -26,7 +26,7 @@ threshold_decay_rate: [0.00005]  # Max=0.5, Decay=0.00001 was good for WF
 is_time_based: [True] # Run an experiment based on duration. Otherwise, based on iterations.
 total_iter: [100_000]  # The number of iterations to run in a search assuming it is an iteration based.
 time: [3600] # The duration for the search in seconds. Assuming it is a time based job (default). It can be more than one option.
-log_level: "INFO" # Set the logging level for root logger (choices: 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+log_level: "WARNING" # Set the logging level for root logger (choices: 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
 log_to_file: True  # Should we log to file or stdout?
 sim: False #  Turn on simulation at the end.
 tree: False #  Print tree at the end of the search.
