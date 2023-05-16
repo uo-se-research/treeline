@@ -355,7 +355,7 @@ class MonteCarloTreeSearch:
         # if we collected the progress data, write it to file with full experiment information for reference.
         if mg.extensive_data_tracking:
             helper.write_dict_to_csv(data=progress_report, output_dir=self.output_dir,
-                                     file_name=f"progress-report-{self.expr_id}",
+                                     file_name=f"progress-report",
                                      comments=f"grammar: {self.gram.gram_name}, budget: {self.allowed_budget}, "
                                               f"total-iter: {num_iter}, c: {mg.C}, e: {mg.E}, "
                                               f"duration(ms): {elapsed_time}, "
