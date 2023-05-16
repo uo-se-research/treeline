@@ -1,4 +1,0 @@
-function $(b = eval()) {
-    ""
-    eval()
-}

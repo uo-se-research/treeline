@@ -43,9 +43,10 @@ docker build -t treeline-img:latest .
 docker run -p 2300:2300 --name treeline -it treeline-img /bin/bash
 ```
 - From the container run the AFL listener for one of the target applications using the commands provided in their 
-documentation ([wf](target_apps/word-frequency/README.md), [libxml](target_apps/libxml2/README.md), 
-[graphviz](target_apps/graphviz/README.md), [flex](target_apps/flex/README.md)).
-e.g. , 
+documentation ([wf](target_apps/word-frequency/README.md), [libxml](target_apps/libxml2/README.md),
+[lunasvg](target_apps/lunasvg/README.md), [graphviz](target_apps/graphviz/README.md),
+[flex](target_apps/flex/README.md)).
+E.g., we would run GraphViz as the following: 
 ```shell
 afl-socket -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot
 ```

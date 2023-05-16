@@ -1,2 +1,0 @@
-function async() {}
-new async
