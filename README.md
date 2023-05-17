@@ -33,39 +33,64 @@ By the end of the search the algorithm will have generated many inputs one of wh
 
 ## Usage:
 
-- Build the Docker image (It will take a long time as we build AFL and each target application):
-```sh
-docker build -t treeline-img:latest .
-```
+- Build the Docker image:
+
+  The back end instrumented execution of an application must take 
+  place in a Docker container. This must be built once, like the
+  command given below.Note that it will take a long time as we
+  build AFL and each target application.
+  ```shell
+  docker build -t treeline-img:latest .
+  ```
 
 - Run a new container
-```sh
-docker run -p 2300:2300 --name treeline -it treeline-img /bin/bash
-```
-- From the container run the AFL listener for one of the target applications using the commands provided in their 
-documentation ([wf](target_apps/word-frequency/README.md), [libxml](target_apps/libxml2/README.md),
-[lunasvg](target_apps/lunasvg/README.md), [graphviz](target_apps/graphviz/README.md),
-[flex](target_apps/flex/README.md)).
-E.g., we would run GraphViz as the following: 
-```shell
-afl-socket -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot
-```
 
-- Run _TreeLine_'s algorithm using either of the following options:
+  After it has been built, it can be started in Docker, like this
+  ```shell
+  docker run -p 2300:2300 --name treeline -it treeline-img /bin/bash
+  ```
+  This publishes port `2300`, which can then be reached either within 
+  the Docker container or from the host machine (e.g., from an 
+  Intel-based Mac laptop for testing). But before we can test input 
+  generation for a particular application, we need an instrumented 
+  version of that application running under the test harness in the 
+  Docker container. For example, to experiment with an instrumented 
+  version of GraphViz, we need to build and run the instrumented 
+  version of GraphViz. We take care if this for the sample target
+  applications. However, to see an example, the build process is
+  described within shell script for each established target application
+  ([this is the GraphViz build script](target_apps/graphviz/build.sh)).
+  
+- Run the AFL listener for a target application:
+
+  Using the commands provided as sample on each target application
+  README file([wf](target_apps/word-frequency/README.md), [libxml](target_apps/libxml2/README.md),
+  [lunasvg](target_apps/lunasvg/README.md), [graphviz](target_apps/graphviz/README.md),
+  [flex](target_apps/flex/README.md)), run the AFL listener for that target app.
+  This is an example of running the AFL listener for GraphViz 
+  ```shell
+  afl-socket -i /home/treeline/target_apps/graphviz/inputs/ -o /home/results/graphviz-001 -p -N 500 -d dot
+  ```
+
+- Run _TreeLine_'s algorithm 
+  
+  To run the search process you have two options.
   - **Option 1**: Run from your local machine
     
-    Run [treeline](src/treeline.py) with the configuration you want form your local machine. This means that you are
+    Run [treeline.py](src/treeline.py) with the configuration you want (see [defaults.yaml](src/defaults.yaml))
+    form your local machine. This means that you are
     responsible for all python's dependencies. 
     ```shell
     python3 treeline.py 
     ```
-  - **Option 2**: Use the same container to run the _TreeLine_
+  - **Option 2**: Use the same container to run the [treeline.py](src/treeline.py)
     
     Open another bash screen on the same container you have up and running.
     ```shell
     docker exec -it treeline /bin/bash
     ```
-    Then navigate to `/home/treeline/src` and run _TreeLine_ as you would on your local machine. 
+    Then navigate to `/home/treeline/src` and run [treeline.py](src/treeline.py)
+    as you would on your local machine with the configurations you define (see [defaults.yaml](src/defaults.yaml)). 
     ```shell
     python3 treeline.py
     ```
