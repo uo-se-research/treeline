@@ -42,12 +42,27 @@ By the end of the search the algorithm will have generated many inputs one of wh
 - Build the Docker image:
 
   The back end instrumented execution of an application must take 
-  place in a Docker container. This must be built once, like the
-  command given below.Note that it will take a long time as we
-  build AFL and each target application.
-  ```shell
-  docker build -t treeline-img:latest .
-  ```
+  place in a Docker container. This must be built once. When
+  building the docker image, you have two options. First, building
+  it from this repo. Second, building it from the docker repository.
+
+  - **Option 1**: Build from Dockerfile 
+
+    The command below uses the [Dockerfile](Dockerfile) given to build
+    the image from scratch. Note that it will take a long time (~10-20 min)
+    as we build AFL and each target application.
+    ```shell
+    docker build -t treeline-img:latest .
+    ```
+  - **Option 2**: Build from Docker Repository
+    
+    The command below simply uses our docker repo to download a built image.
+    Please note that the rest of the documentation assumes you follow _Option-1_.
+    Thus, you should adjust the image and container naming when following this
+    option to avoid any naming conflict. 
+    ```shell
+    docker pull zalsaeed/treeline
+    ```
 
 - Run a new container
 

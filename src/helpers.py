@@ -209,7 +209,7 @@ def prep_expr_for_showmax(root_path: str, expr_dir: List[str]):
             technique = 'tool:TreeLine'
         elif os.path.exists(root_path + f'/{expr}' + '/list'):
             inputs_dir = 'list'
-            technique = 'tool:GramFuzz'
+            technique = 'tool:SlackLine'
         else:
             raise RuntimeError(f"Cannot find queue/buffer/list in {root_path}/{expr}")
         # inputs_dir = 'queue' if os.path.exists(root_path + f'/{expr}' + '/queue') else 'buffer'
@@ -245,7 +245,7 @@ def prep_expr_for_showmax(root_path: str, expr_dir: List[str]):
             if base_name.endswith(','):
                 base_name = base_name[:-1]
 
-            if technique == 'tool:GramFuzz':
+            if technique == 'tool:SlackLine':
                 indicators = base_name.split('-')
             else:
                 indicators = base_name.split(',')
