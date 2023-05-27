@@ -24,8 +24,8 @@ reportable runs we want to track minimal data.
 
 buckets = [500, 1000, 100000, 1000000, 1000000000]  # ranges of costs
 tails = [200000, 100000, 50000, 25000, 5000, 2500]  # possible tails
-"""Creating a mapping between ranges of cost and tail. These arrays are used in the main algorithm to adjust the tail size
-each time we observe a new max cost.
+"""Creating a mapping between ranges of cost and tail. These arrays are used in the main algorithm to adjust the tail
+size each time we observe a new max cost.
 
 +----------------------------+-------------+
 | cost range                 |  tail size  |
